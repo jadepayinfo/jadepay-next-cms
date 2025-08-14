@@ -1,0 +1,10 @@
+.DS_Store
+log/
+taskdef.json
+.env
+appspec.yaml
+tmp/
+__debug_bin.exe
+.air.toml
+.idea
+node_modules/

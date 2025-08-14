@@ -1,0 +1,40 @@
+.pagination {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .item {
+    @apply btn btn-sm;
+    background-color: transparent;
+    height: 30px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--bt-action);
+    cursor: pointer;
+    border-width: 1px;
+    font-weight: 600;
+    font-size: 14px;
+
+    @apply border border-primary text-primary ;
+
+    &:hover{
+      @apply text-[--bt-text] bg-primary transition-all;
+    }
+
+    &--active {
+      @apply bg-primary text-[--bg-panel] hover:cursor-pointer;
+      
+      cursor: unset;
+    }
+
+    &--disable {
+      opacity: 0.2;
+      background-color: var(--bg-action);
+      color: var(--bg-action-text);
+      cursor: unset;
+      border: unset;
+    }
+  }
+}
