@@ -9,6 +9,7 @@ import Datepicker, {
 } from "react-tailwindcss-datepicker";
 import { IconCalendar } from "@/components/icon";
 import { KycDocument } from "@/model/kyc";
+import { FileText ,FilePlus2} from "lucide-react";
 
 type SelectOption = {
   value: number;
@@ -45,6 +46,7 @@ interface Props {
   openPopup: () => void;
   handleSaveDocument: (doc: KycDocument, rotation: number) => void;
   handleDeleteDocument: (doc: KycDocument) => void;
+  previewUrl?: string;
 }
 
 const DocumentRow: React.FC<Props> = ({
@@ -57,11 +59,14 @@ const DocumentRow: React.FC<Props> = ({
   openPopup,
   handleSaveDocument,
   handleDeleteDocument,
+  previewUrl
 }) => {
   const idInputRef = useRef<HTMLInputElement>(null);
   const issueDateRef = useRef<HTMLInputElement>(null);
   const expireDateRef = useRef<HTMLInputElement>(null);
+  
 
+ 
   const getCountryCode = (country: string): string => {
     switch (country) {
       case "MMR":
@@ -80,10 +85,9 @@ const DocumentRow: React.FC<Props> = ({
       initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country)
     );
   });
-  const [docType, setDocType] = useState(doc.doc_type);
+  const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
-  const [ictId, setICTID] = useState(doc.document_no ?? "");
-
+  const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
   // Date
   const dateIssuedString = doc.issued_date ?? "";
   const dateExpiredString = doc.expired_date ?? "";
@@ -102,10 +106,6 @@ const DocumentRow: React.FC<Props> = ({
   const [ICTMappintOptions, setICTMappingOptions] = useState<SelectOption[]>(
     []
   );
-  // const [docPriOptions, setDocPriOptionsSelected] = useState<SelectOption[]>([]);
-  // const [docSecOptions, setDocSecOptionsSelected] = useState<SelectOption[]>([]);
-  // const [docAddOptions, setDocAddOptionsSelected] = useState<SelectOption[]>([]);
-
   const mappedCountry = getCountryCode(country);
 
   const getLoadOption = async () => {
@@ -200,14 +200,17 @@ const DocumentRow: React.FC<Props> = ({
     return date.toISOString().split("T")[0];
   };
 
-  const onSave = () => {
+  const onSave = (action: string ) => {
     const updated: KycDocument = {
       ...doc,
-      doc_type: docType,
+      doctype_id: docType,
+      document_info:docRole,
       position,
       document_no: docIdNo,
       issued_date: formatDate(issuedDate.startDate),
       expired_date: formatDate(expiredDate.startDate),
+      ict_mapping_id: ictId ,
+      action :action
     };
     handleSaveDocument(updated, doc.rotationAngle ?? 0);
   };
@@ -224,29 +227,48 @@ const DocumentRow: React.FC<Props> = ({
     }
     getLoadOption();
   }, []);
-
+  
   return (
     <tr className="border-b hover:bg-gray-50">
       <td className="py-2 px-3">{index + 1}</td>
       <td className="py-2 px-3">
-        <img
-          src={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`}
-          alt="doc"
-          className="w-20 h-20 object-contain cursor-pointer transition-transform"
-          style={{ transform: `rotate(${doc.rotationAngle ?? 0}deg)` }}
-          onClick={openPopup}
-        />
+       {previewUrl ? (
+    <img
+      src={previewUrl}
+      alt="preview"
+      className="w-20 h-20 object-contain cursor-pointer transition-transform"
+      style={{ transform: `rotate(${doc.rotationAngle ?? 0}deg)` }}
+      onClick={openPopup}
+    />
+  ) : doc.kyc_doc_id != 0 ? (
+    <img
+      src={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`}
+      alt="doc"
+      className="w-20 h-20 object-contain cursor-pointer transition-transform"
+      style={{ transform: `rotate(${doc.rotationAngle ?? 0}deg)` }}
+      onClick={openPopup}
+    />
+  ) : (
+    <div
+      className="text-center text-gray-500 cursor-pointer"
+      onClick={openPopup}
+    >
+      <FileText className="w-6 h-6 mx-auto mb-1" />
+      <p className="text-xs font-medium">IMG</p>
+      <p className="text-xxs">Document</p>
+    </div>
+  )}     
+        
       </td>
 
       {/* Document Role as dropdown */}
-      <td className="py-2 px-3">
+      <td className="py-2 px-3 w-xl">
         <select
-          className="select select-ui w-full"
+          className="select select-ui w-full "
           value={docRole}
           onChange={handleChange}
         >
           <option value="" disabled>
-            {" "}
             Document Role
           </option>
           <option value={"primary_document_" + mappedCountry}>Primary</option>
@@ -259,11 +281,11 @@ const DocumentRow: React.FC<Props> = ({
         </select>
       </td>
       {/* Document Type as dropdown */}
-      <td className="py-2 px-3">
+      <td className="py-2 px-3 ">
         <select
           className="select select-ui w-full"
-          value={docType}
-          onChange={(e) => setDocType(e.target.value)}
+          value={docType === 0 ? "" : String(docType)}
+          onChange={(e) => setDocType(Number(e.target.value))}
         >
           <option value="" disabled>
             Document Type
@@ -285,16 +307,13 @@ const DocumentRow: React.FC<Props> = ({
           <option value="" disabled>
             Position
           </option>
-          <option value="" disabled>
-            Position
-          </option>
-          <option value="manager">FRONT</option>
-          <option value="staff">BACK</option>
+          <option value="FRONT">FRONT</option>
+          <option value="BACK">BACK</option>
         </select>
       </td>
 
       {/* Document No. as InputCustom */}
-      <td className="py-2 px-3">
+      <td className="py-2 px-3 w-24">
         <InputCustom
           name="Document No"
           title="Document No"
@@ -308,8 +327,8 @@ const DocumentRow: React.FC<Props> = ({
       </td>
 
       {/* Issued Date */}
-      <td className="py-2 px-3 overflow-visible">
-        <div className=" relative w-full flex items-center  border border-[--border-color] py force-light-background">
+      <td className="py-2 px-3  relative ">
+        <div className="date-box relative w-full flex items-center border border-[--border-color] py force-light-background">
           <Datepicker
             useRange={false}
             asSingle={true}
@@ -331,8 +350,8 @@ const DocumentRow: React.FC<Props> = ({
       </td>
 
       {/* Expired Date */}
-      <td className="py-2 px-3 overflow-visible">
-        <div className=" relative w-full flex items-center  border border-[--border-color] py force-light-background">
+      <td className="py-2 px-3 relative">
+        <div className="date-box  relative w-full flex items-center  border border-[--border-color] py force-light-background">
           <Datepicker
             useRange={false}
             asSingle={true}
@@ -356,8 +375,8 @@ const DocumentRow: React.FC<Props> = ({
       <td className="py-2 px-3">
         <select
           className="select select-ui w-full"
-          value={ictId}
-          onChange={(e) => setICTID(e.target.value)}
+         value={ictId === 0 ? "" : String(ictId)}
+          onChange={(e) => setICTID(Number(e.target.value))}
         >
           <option value="" disabled>
             ICT Mapping
@@ -378,17 +397,17 @@ const DocumentRow: React.FC<Props> = ({
 
       <td className="py-2 px-3">
         <div className="flex gap-2 flex-nowrap">
-          <button className="btn btn-xs btn-success" onClick={onSave}>
+          <button className="btn btn-xs btn-success" onClick={() =>onSave("save")}>
             Save
           </button>
-          <button className="btn btn-xs btn-success" onClick={onSave}>
+          <button className="btn btn-xs btn-success" onClick={() =>onSave("approve")}>
             Approve
           </button>
           <button
             className="btn btn-xs btn-error"
             onClick={() => handleDeleteDocument(doc)}
           >
-            Delete
+            reject
           </button>
         </div>
       </td>

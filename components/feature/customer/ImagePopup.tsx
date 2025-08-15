@@ -1,22 +1,45 @@
-import { Redo, Undo } from "lucide-react";
-import { FC, useState } from "react";
+import { Redo, Undo, Upload } from "lucide-react";
+import { ChangeEvent, FC, useState } from "react";
 
 interface Props {
   imageUrl: string;
   onClose: () => void;
   onSaveRotation?: (rotation: number) => void;
+  onUpload?: (file: File) => void;
   isLoading?: boolean;
 }
 
-const ImagePopup: FC<Props> = ({ imageUrl, onClose, onSaveRotation, isLoading }) => {
+const ImagePopup: FC<Props> = ({
+  imageUrl,
+  onClose,
+  onSaveRotation,
+  onUpload,
+  isLoading,
+}) => {
   const [rotation, setRotation] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(
+    imageUrl ?? undefined
+  );
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const rotateLeft = () => setRotation((prev) => prev - 90);
   const rotateRight = () => setRotation((prev) => prev + 90);
 
   const handleOk = () => {
+    if (selectedFile && onUpload) {
+      onUpload(selectedFile); // 👈 ส่ง file จริงออกไป
+    }
     if (onSaveRotation) onSaveRotation(rotation);
     onClose();
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
   };
 
   return (
@@ -45,19 +68,25 @@ const ImagePopup: FC<Props> = ({ imageUrl, onClose, onSaveRotation, isLoading })
           >
             <Redo className="w-5 h-5 text-green-600" />
           </button>
+          <label className="px-3 py-1 border rounded text-gray-700 hover:bg-gray-100 cursor-pointer">
+            <Upload className="w-5 h-5 text-green-600 mr-1" />
+            <input type="file" className="hidden" onChange={handleFileChange} />
+          </label>
         </div>
 
         <div className="flex-1 overflow-auto flex justify-center items-center">
           {isLoading ? (
             <div className="text-gray-500">Loading...</div>
-          ) : (
+          ) : previewUrl || imageUrl ? (
             <img
-              src={imageUrl}
+              src={previewUrl ?? imageUrl}
               alt="Document"
-              className="max-w-full max-h-full object-contain"
+              className="max-w-[50%] max-h-[50%] object-contain"
               style={{ transform: `rotate(${rotation}deg)` }}
               draggable={false}
             />
+          ) : (
+            <div className="text-gray-400">No image selected</div>
           )}
         </div>
 

@@ -11,7 +11,7 @@ type Props = {
 
 const NavbarLogin = () => {
   return (
-    <div className="navbar h-[68px] bg-base-100 px-6 border-base-300 sticky top-0 border-b z-[7000]">
+    <div className="navbar h-[68px] bg-base-100 px-6 border-base-300 sticky top-0 border-b">
       <div className="navbar-start">
         <ButtonOpenSidebar />
       </div>

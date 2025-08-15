@@ -28,6 +28,7 @@ select:-webkit-autofill:focus {
 }
 
 .date-box {
+   
   --date-input: hsl(var(--bc) / var(--tw-text-opacity, 1));
   input {
     color: var(--date-input);

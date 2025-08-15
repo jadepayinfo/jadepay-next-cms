@@ -1,18 +1,19 @@
 import { FC, FormEventHandler, useEffect, useRef, useState } from "react";
-import { Customer, CustomerAddress, CustomerAddressRequest, CustomerDataRequest, CustomerInfo, CustomerRequest } from "@/model/customer";
+import {CustomerAddressRequest, CustomerDataRequest, CustomerInfo } from "@/model/customer";
 import DocumentTable from "./DocumentTable";
 import { useRouter } from "next/router";
 import { getDateTimeNow, unixToDateString } from "@/lib/time";
 import { CatalogueItem } from "@/model/catalogueItem";
 import Datepicker, { DateRangeType, DateType } from "react-tailwindcss-datepicker";
 import axios from "axios";
-import {   User,  FileText,  BookUser, MapPin} from "lucide-react";
+import { User,  FileText,  BookUser, MapPin} from "lucide-react";
 import InputCustom from "@/components/input/input";
 import { IconCalendar } from "@/components/icon";
-import Select, { components } from "react-select";
+import Select from "react-select";
 import { ButtonFill, ButtonOutline } from "@/components/buttons";
 import ImagePopup from "./ImagePopup";
-import { KycDocument, KycInfo } from "@/model/kyc";
+import { KycDocument } from "@/model/kyc";
+import { Elsie_Swash_Caps } from "next/font/google";
 
 interface Props {
  customerInfo?: CustomerInfo;
@@ -78,9 +79,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [KycRiskStatus, setKycRiskStatus] = useState(
     customerInfo?.kyc_data.kyc_data.kyc_risk_status ?? ""
   );
-  const [KycStatus, setKycStatus] = useState(
-    customerInfo?.kyc_data.kyc_data.kyc_status ?? ""
-  );
   // DDL Nationality
   const [NationalityList, setNationalityList] = useState<SelectOption[]>([]);
   const [Nationality, setNationality] = useState<SelectOption>();
@@ -125,7 +123,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [WorkZipcode, setWorkZipcode] = useState(objWorkctaddress?.zipcode ?? "" );
 
   //docement
-  const [documents, setDocuments] = useState(customerInfo?.kyc_data.kyc_documents ?? []);
+  const [documents, setDocuments] = useState<KycDocument[]>(customerInfo?.kyc_data.kyc_documents ?? []);
   const primaryDocs = documents.filter(doc =>
     doc.document_info?.toLowerCase().includes("primary")
   );
@@ -137,29 +135,34 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [currentDocId, setCurrentDocId] = useState<number | null>(null);
   const [rotationAngles, setRotationAngles] = useState<Record<number, number>>({});
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
-
+  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
+  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
+  const [previewFiles, setPreviewFiles] = useState<Record<number, File>>({});
   const openPopup = async (docId: number) => {
     setIsImageLoading(true);
     try {
-      // fetch รูปภาพจาก backend
-      const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${docId}`);
-      if (!resp.ok) throw new Error("Cannot fetch image");
-      const blob = await resp.blob();
-
-      // มุมหมุนปัจจุบัน
-      const rotation = rotationAngles[docId] ?? 0;
-
-      // หมุนรูปถ้าจำเป็น (ใช้ฟังก์ชัน rotateImage ที่มีอยู่)
-      let url: string;
-      if (rotation === 0) {
-        url = URL.createObjectURL(blob);
-      } else {
-        const rotatedBlob = await rotateImage(blob, rotation);
-        url = URL.createObjectURL(rotatedBlob);
-      }
+      let url: string | null = null;
+      if (previewUrls[docId]) {
+        url = previewUrls[docId];
+      } else if (docId===0) {
+        url=null
+      }else{
+        const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${docId}`);
+        if (!resp.ok) throw new Error("Cannot fetch image");
+        const blob = await resp.blob();
+        
+        const rotation = rotationAngles[docId] ?? 0;
+        if (rotation === 0) {
+          url = URL.createObjectURL(blob);
+        } else {
+          const rotatedBlob = await rotateImage(blob, rotation);
+          url = URL.createObjectURL(rotatedBlob);
+        }
+      }      
 
       setPopupImageUrl(url);
       setCurrentDocId(docId);
+      setIsPopupOpen(true);
     } catch (err) {
       alert("โหลดรูปไม่สำเร็จ");
     } finally {
@@ -173,9 +176,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     }
     setPopupImageUrl(null);
     setCurrentDocId(null);
-  };
- 
-    // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
+    setIsPopupOpen(false);
+  }; 
+  // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
   const saveRotation = async (rotation: number) => {
     if (currentDocId === null) return;
     console.log("saveRotation : ", rotation, currentDocId);
@@ -186,25 +189,64 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 
   };
 
+  const handleUploadFromPopup = (file: File) => {
+    const url = URL.createObjectURL(file);
+    if (currentDocId !== null) {
+      setPreviewUrls(prev => ({
+        ...prev,
+        [currentDocId]: url
+      }));
+
+      setPreviewFiles(prev => ({
+        ...prev,
+        [currentDocId]: file
+      }));
+    }
+  };
+
   const handleSaveDocument = async (doc: KycDocument,rotation: number) => {
+    console.log("doc :", doc)
   try {
-    // 1. ดึงรูปภาพต้นฉบับจาก backend
-    const imageResponse = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
-    if (!imageResponse.ok) throw new Error("Cannot fetch image file");
+    let fileToUpload: File;
 
-    const blob = await imageResponse.blob();
-
-    // 3. หมุนรูป blob ถ้ามุม 0 ให้ใช้ blob เดิมเลย
-
-    const rotatedBlob = rotation === 0 ? blob : await rotateImage(blob, rotation);
-    const file = new File([rotatedBlob], `document_${doc.kyc_doc_id}.jpg`, { type: "image/jpeg" });
-
-    // 5. สร้าง FormData เพื่อส่งข้อมูลไป API
+    if (previewFiles[doc.kyc_doc_id]) {
+      // ใช้ไฟล์ที่เลือกใหม่
+      const originalFile = previewFiles[doc.kyc_doc_id];
+      const blob = rotation === 0 ? originalFile : await rotateImage(originalFile, rotation);
+      fileToUpload = new File([blob], originalFile.name, { type: originalFile.type });
+    } else {
+      // ดึงจาก backend
+      const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
+      if (!resp.ok) throw new Error("Cannot fetch image file");
+      const blob = await resp.blob();
+      const rotatedBlob = rotation === 0 ? blob : await rotateImage(blob, rotation);
+      fileToUpload = new File([rotatedBlob], `document_${doc.kyc_doc_id}.jpg`, { type: "image/jpeg" });
+    }
+    // // 5. สร้าง FormData เพื่อส่งข้อมูลไป API
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("config", doc.kyc_doc_id.toString()); // กำหนดค่าตาม API ต้องการ
-    formData.append("position", "FRONT"); // กำหนดค่าตาม API ต้องการ
-
+    formData.append("file", fileToUpload);
+    formData.append("kyc_doc_id", doc.kyc_doc_id.toString());
+    formData.append("config_id", doc.doctype_id.toString()); // กำหนดค่าตาม API ต้องการ
+    formData.append("position", doc.position); // กำหนดค่าตาม API ต้องการ
+   
+    if (doc.document_no) {
+      formData.append("document_no", doc.document_no);
+    }
+    if (doc.issued_date) {
+      formData.append("issued_date", doc.issued_date);
+    }
+    if (doc.expired_date) {
+      formData.append("expired_date", doc.expired_date);
+    }
+    if (doc.ict_mapping_id) {
+      formData.append("ict_mapping", doc.ict_mapping_id.toString());
+    }
+    if (doc.action) {
+      formData.append("action", doc.action);
+    }   
+    if (doc.user_id) {
+      formData.append("user_id", doc.user_id.toString());
+    }  
     // 6. เรียก API upload (แก้ URL ให้ตรงกับ backend จริง)
     const uploadResponse = await fetch("/api/kyc/upload-document", {
       method: "POST",
@@ -220,7 +262,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     console.error("Upload failed", error);
     alert("อัปโหลดเอกสารล้มเหลว");
   }
-};
+  };
 
   const handleDeleteDocument = (doc: KycDocument) => {
     console.log("Delete", doc);
@@ -248,6 +290,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       setOwnerNationality(null);
     }
   };
+
   const mappingOccupation = (select: SelectOption | undefined) => {
     if (select) {
       const rawArray = Object.values(rawOccupationList.current).filter((item): item is CatalogueItem => typeof item === "object" && "id" in item);
@@ -257,6 +300,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       setOwnerOccupation(null);
     }
   };
+
   const mappingMonthlyIncomeList = (select: SelectOption | undefined) => {
      if (select) {
       const rawArray = Object.values(rawMonthlyIncomeList.current).filter((item): item is CatalogueItem => typeof item === "object" && "id" in item);
@@ -266,29 +310,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       setOwnerMonthlyIncome(null);
     }
   };
-
-  function mergeWithChanges<T extends object>(original: T, update: Partial<T>): T {
-  const result = { ...original };
-
-  for (const key in update) {
-    if (Object.prototype.hasOwnProperty.call(update, key)) {
-      const originalValue = original[key];
-      const updatedValue = update[key];
-
-      if (
-        updatedValue instanceof Date &&
-        (typeof originalValue === "string" || originalValue === null || originalValue === undefined)
-      ) {
-        // แปลง Date เป็น string (ISO format หรือแค่ YYYY-MM-DD)
-        (result as any)[key] = updatedValue.toISOString().split("T")[0]; // "2025-08-06"
-      } else {
-        (result as any)[key] = updatedValue;
-      }
-    }
-  }
-
-  return result;
-}
 
   const submitButtonHandler: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -377,6 +398,29 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   }
   };
   
+  const addNewDocument = () => {
+  setDocuments(prev => [
+    ...prev,
+    {
+      kyc_doc_id: 0,      
+      kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,            // default ถ้ายังไม่มี
+      doc_type: "",          // default type
+      document_no: "",
+      position: "",
+      issued_date: null,
+      expired_date: null,
+      document_info: "",
+      active: false,
+      url: "",
+      action: "request",       // default action
+      user_id: customerInfo?.customer_data.customer.user_id,
+      rotationAngle: 0,
+      doctype_id: 0,
+      ict_mapping_id: 0,
+    } as KycDocument
+  ]);
+};
+
   useEffect(() => {
     const getLoadData = async () => {
       try {
@@ -934,18 +978,17 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
             </div>
           </div>
         </form> 
-
       
-   
       <DocumentTable
         documents={documents}
-        nationality={Nationality?.value ?? 0}
         openPopup={openPopup}
         rotationAngles={rotationAngles}
+        previewUrls={previewUrls}  
         closePopup={closePopup}
         saveRotation={saveRotation}
         handleSaveDocument={handleSaveDocument}
         handleDeleteDocument={handleDeleteDocument}
+        handleAddDocument={addNewDocument}
       />
     
 
@@ -982,12 +1025,13 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         </div>
       </div>
 
-      {popupImageUrl && (
+       {isPopupOpen  && (
         <ImagePopup
-          imageUrl={popupImageUrl}
+          imageUrl={popupImageUrl || ""}
           onClose={closePopup}
-          onSaveRotation={saveRotation}
-          isLoading={isImageLoading}
+          onSaveRotation={saveRotation}     
+          onUpload={handleUploadFromPopup}   
+          isLoading={isImageLoading}          
         />
       )}
     </>

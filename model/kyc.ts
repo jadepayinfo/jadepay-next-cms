@@ -60,6 +60,7 @@ export interface KycDocument {
   kyc_doc_id: number;
   kyc_id: number;
   user_id: number;
+  doctype_id: number;
   doc_type: string;
   position: string;
   doc_id_no: string;
@@ -74,4 +75,6 @@ export interface KycDocument {
   updated_at: string;
   active: boolean;
   rotationAngle: number| null| undefined;
+  action :string | null;
+  ict_mapping_id: number;
 }
