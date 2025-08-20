@@ -22,12 +22,12 @@ import { SidebarMenuType } from '@/model/menu';
 const withAuth = (WrappedComponent: FunctionComponent & any) => {
   const InApp = (props: any) => {
     const router = useRouter();
-    const accessToken = useRef<string>();
+    const accessToken = useRef<string | undefined>(undefined);
     const [err, setErr] = useState<Error>();
     const initPage = useRef<boolean>(false);
     // const { setStaff } = useAuth();
     const { setIsHamburgerMenu, verifyMenuRole, currentMenu } = useMenu();
-    const initMenu = useRef<SidebarMenuType | undefined>();
+    const initMenu = useRef<SidebarMenuType | undefined>(undefined);
 
     useEffect(() => {
        const token = Cookies.get(TOKEN_APP);

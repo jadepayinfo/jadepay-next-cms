@@ -3,8 +3,8 @@ import React from 'react';
 
 interface Props extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   title: string;
-  prefixIcon?: JSX.Element;
-  suffixIcon?: JSX.Element;
+  prefixIcon?: React.ReactElement;
+  suffixIcon?: React.ReactElement;
   inputValidation?: 'error' | 'success' | 'warning';
   helperText?: string;
   textLeftButton?: string;

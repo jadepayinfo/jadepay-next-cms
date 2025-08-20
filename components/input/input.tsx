@@ -3,8 +3,8 @@ import { cn } from "@/lib/css";
 
 interface Props extends InputHTMLAttributes<HTMLInputElement> {
   title: string;
-  prefixIcon?: JSX.Element;
-  suffixIcon?: JSX.Element;
+  prefixIcon?: React.ReactElement;
+  suffixIcon?: React.ReactElement;
   inputValidation?: "error" | "success" | "warning";
   helperText?: string;
   textLeftButton?: string;

@@ -31,7 +31,7 @@ ChartJS.register(
 
 const ChartRegister = (data: any) => {
   const { datas, timeType } = data;
-  const chartRef = useRef<ChartJS<'bar'>>();
+  const chartRef = useRef<ChartJS<'bar', number[], string>>(null);
 
   const { primaryColor } = useTheme();
 
