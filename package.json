@@ -16,6 +16,7 @@
     "@mui/icons-material": "^7.3.1",
     "@mui/material": "^7.3.1",
     "@tabler/icons-react": "^3.34.1",
+    "@tailwindcss/postcss": "^4.1.12",
     "apexcharts": "^5.3.3",
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",

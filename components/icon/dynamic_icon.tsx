@@ -13,7 +13,7 @@ function useDynamicSVGImport(
   name: string,
   options: UseDynamicSVGImportOptions = {}
 ) {
-  const ImportedIconRef = useRef<React.FC<React.SVGProps<SVGSVGElement>>>();
+  const ImportedIconRef = useRef<React.FC<React.SVGProps<SVGSVGElement>> | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error>();
 
