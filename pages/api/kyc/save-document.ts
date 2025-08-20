@@ -53,9 +53,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // แนบไฟล์โดยใช้ fs.createReadStream
     formData.append("file", fs.createReadStream(file.filepath), filename);
 
+    console.log("fields : " , fields)
     if (fields.kyc_doc_id) {
       const kycDocIdValue = Array.isArray(fields.kyc_doc_id) ? fields.kyc_doc_id[0] : fields.kyc_doc_id;
       if (kycDocIdValue) formData.append("kyc_doc_id", kycDocIdValue);
+    }
+    if (fields.kyc_id) {
+      const kycIdValue = Array.isArray(fields.kyc_id) ? fields.kyc_id[0] : fields.kyc_id;
+      if (kycIdValue) formData.append("kyc_id", kycIdValue);
     }
    
     if (fields.config_id) {
@@ -95,15 +100,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
      if (fields.user_id) {
       const userIdValue = Array.isArray(fields.user_id) ? fields.user_id[0] : fields.user_id;
-      if (userIdValue) formData.append("cus_id", userIdValue);
+      if (userIdValue) formData.append("customer_id", userIdValue);
     }
     
+    if (fields.remark) {
+      const remarkValue = Array.isArray(fields.remark) ? fields.remark[0] : fields.remark;
+      if (remarkValue) formData.append("remark", remarkValue);
+    }
+    if (fields.status) {
+      const statusValue = Array.isArray(fields.status) ? fields.status[0] : fields.status;
+      if (statusValue) formData.append("status", statusValue);
+    }
 
     // รับ token จาก cookie หรือ header (แก้ตามจริง)
     const accessToken = req.cookies.token || req.headers.authorization || "";
 
     // เรียก API Backend Go
-    const response = await Backend.post("/api/v1/kyc/upload-kyc-doc", formData, {
+    const response = await Backend.post("/api/v1/kyc/save-document", formData, {
       headers: {
         Authorization: typeof accessToken === "string" ? `Bearer ${accessToken}` : "",
         ...formData.getHeaders(),

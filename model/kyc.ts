@@ -73,8 +73,18 @@ export interface KycDocument {
   created_at: string;
   updated_by: number;
   updated_at: string;
-  active: boolean;
+  Action: string;
   rotationAngle: number| null| undefined;
   action :string | null;
   ict_mapping_id: number;
+  remark:string | null;
+  status: string | null;
+}
+
+export interface KycDocumentAction {
+  kyc_doc_id: number;
+  kyc_id: number;
+  customer_id: number;
+  action: string| null;
+  remark: string | null;
 }

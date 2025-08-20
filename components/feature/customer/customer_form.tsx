@@ -51,6 +51,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 
   // Selfie Image
   const [selfeIMG, setSelfieIMG] = useState<number | undefined| null >(undefined);
+  const [selfeDoc, setSelfieDOC] = useState<KycDocument | undefined| null >(undefined);
   // Customer Info
   const [Fullname, setFullname] = useState(
     customerInfo?.customer_data?.customer?.fullname ?? ""
@@ -204,11 +205,12 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     }
   };
 
-  const handleSaveDocument = async (doc: KycDocument,rotation: number) => {
-    console.log("doc :", doc)
-  try {
-    let fileToUpload: File;
+  const handleSaveDocument = async (  doc: KycDocument,  rotation: number,  action?: string,  remark?: string) => {
 
+  try {
+    // 1. เตรียมไฟล์สำหรับอัปโหลด
+    let fileToUpload: File;
+    
     if (previewFiles[doc.kyc_doc_id]) {
       // ใช้ไฟล์ที่เลือกใหม่
       const originalFile = previewFiles[doc.kyc_doc_id];
@@ -216,53 +218,50 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       fileToUpload = new File([blob], originalFile.name, { type: originalFile.type });
     } else {
       // ดึงจาก backend
-      const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
-      if (!resp.ok) throw new Error("Cannot fetch image file");
-      const blob = await resp.blob();
+       const resp = await axios.get(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`, {
+        responseType: 'blob' // สำคัญ! ต้องระบุเป็น blob
+      });      
+      const blob = resp.data;
       const rotatedBlob = rotation === 0 ? blob : await rotateImage(blob, rotation);
       fileToUpload = new File([rotatedBlob], `document_${doc.kyc_doc_id}.jpg`, { type: "image/jpeg" });
     }
-    // // 5. สร้าง FormData เพื่อส่งข้อมูลไป API
+
+    // 2. กำหนดค่า action และ remark
+    const finalAction = action || doc.action || "save";
+    const finalRemark = remark || doc.remark || "";
+
+    // 3. สร้าง FormData
     const formData = new FormData();
     formData.append("file", fileToUpload);
     formData.append("kyc_doc_id", doc.kyc_doc_id.toString());
-    formData.append("config_id", doc.doctype_id.toString()); // กำหนดค่าตาม API ต้องการ
-    formData.append("position", doc.position); // กำหนดค่าตาม API ต้องการ
-   
-    if (doc.document_no) {
-      formData.append("document_no", doc.document_no);
-    }
-    if (doc.issued_date) {
-      formData.append("issued_date", doc.issued_date);
-    }
-    if (doc.expired_date) {
-      formData.append("expired_date", doc.expired_date);
-    }
-    if (doc.ict_mapping_id) {
-      formData.append("ict_mapping", doc.ict_mapping_id.toString());
-    }
-    if (doc.action) {
-      formData.append("action", doc.action);
-    }   
-    if (doc.user_id) {
-      formData.append("user_id", doc.user_id.toString());
-    }  
-    // 6. เรียก API upload (แก้ URL ให้ตรงกับ backend จริง)
-    const uploadResponse = await fetch("/api/kyc/upload-document", {
-      method: "POST",
-      body: formData,
+    formData.append("config_id", doc.doctype_id.toString());
+    formData.append("position", doc.position);
+    formData.append("action", finalAction);
+    formData.append("remark", finalRemark);
+  
+
+    // เพิ่ม optional fields
+    if (doc.document_no) formData.append("document_no", doc.document_no);
+    if (doc.issued_date) formData.append("issued_date", doc.issued_date);
+    if (doc.expired_date) formData.append("expired_date", doc.expired_date);
+    if (doc.ict_mapping_id) formData.append("ict_mapping", doc.ict_mapping_id.toString());
+    if (doc.user_id) formData.append("user_id", doc.user_id.toString());
+    if (doc.status) formData.append("status", doc.status.toString());
+    // 4. อัปโหลดไป API
+    const response = await axios.post("/api/kyc/save-document", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
 
-    if (!uploadResponse.ok) {
-      throw new Error("Upload failed");
-    }
-
     alert("อัปโหลดเอกสารสำเร็จ");
+    //return response.data;
+    
   } catch (error) {
     console.error("Upload failed", error);
     alert("อัปโหลดเอกสารล้มเหลว");
   }
-  };
+};
 
   const handleDeleteDocument = (doc: KycDocument) => {
     console.log("Delete", doc);
@@ -410,7 +409,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       issued_date: null,
       expired_date: null,
       document_info: "",
-      active: false,
       url: "",
       action: "request",       // default action
       user_id: customerInfo?.customer_data.customer.user_id,
@@ -419,6 +417,170 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       ict_mapping_id: 0,
     } as KycDocument
   ]);
+};
+
+// เพิ่ม handlers ใหม่ใน CustomerForm component
+// 1. Handler สำหรับ Approve
+const handleApproveDocument = async ( doc: KycDocument) => {
+  try {
+    const response = await axios.post('/api/kyc/set-action-document', {
+      kyc_doc_id: doc.kyc_doc_id,
+      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
+      action:"approve",
+      customer_id:doc.user_id,
+      remark:doc.remark,
+    });
+    
+      setDocuments(prev => prev.map(doc => 
+        doc.kyc_doc_id === doc.kyc_doc_id 
+          ? { ...doc, action_status: 'Rejected', remark: "อนุมัติเอกสาร", active: false }
+          : doc
+      ));
+
+    // อัปเดต documents state หรือ refetch
+    alert('อนุมัติเอกสารสำเร็จ');
+    // อาจจะต้อง refetch documents หรือ update state
+    
+  } catch (error) {
+    console.error('Failed to approve document:', error);
+    
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || 'อนุมัติเอกสารไม่สำเร็จ';
+      alert(errorMessage);
+    } else {
+      alert('อนุมัติเอกสารไม่สำเร็จ');
+    }
+  }
+};
+
+// 2. Handler สำหรับ Reject
+const handleRejectDocument = async (document: KycDocument, reason: string) => {
+  try {
+    const response = await axios.post('/api/kyc/set-action-document', {
+      kyc_doc_id: document.kyc_doc_id,
+      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
+      action:"reject",
+      customer_id:document.user_id,
+      remark:reason,
+    });
+    
+      // อัปเดต documents state
+      setDocuments(prev => prev.map(doc => 
+        doc.kyc_doc_id === document.kyc_doc_id 
+          ? { ...doc, action_status: 'Rejected', remark: "ยกเลิกเอกสาร : "+reason, active: false }
+          : doc
+      ));
+      alert('ปฏิเสธเอกสารสำเร็จ');
+    
+  } catch (error) {
+    console.error('Failed to reject document:', error);
+    alert('ปฏิเสธเอกสารไม่สำเร็จ');
+  }
+};
+
+// 3. Handler สำหรับ Inactive
+const handleInactiveDocument = async (document: KycDocument, reason: string) => {
+  try {
+    const response = await axios.post('/api/kyc/set-action-document', {
+      kyc_doc_id: document.kyc_doc_id,
+      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
+      action:"inactive",
+      customer_id:document.user_id,
+       remark:reason,
+    });
+    
+    
+      setDocuments(prev => prev.map(doc => 
+        doc.kyc_doc_id === document.kyc_doc_id 
+          ? { ...doc, action_status: 'Inactive', remark: reason, active: false }
+          : doc
+      ));
+      alert('ทำให้เอกสารไม่ใช้งานสำเร็จ');
+    
+  } catch (error) {
+    console.error('Failed to inactive document:', error);
+    alert('ทำให้เอกสารไม่ใช้งานไม่สำเร็จ');
+  }
+};
+
+// 4. Handler สำหรับ Reactivate
+const handleReactivateDocument = async (document: KycDocument) => {
+  try {
+     const response = await axios.post('/api/kyc/set-action-document', {
+      kyc_doc_id: document.kyc_doc_id,
+      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
+      action:"review",
+      customer_id:document.user_id,
+      remark:document.remark,
+    });
+    
+      setDocuments(prev => prev.map(doc => 
+        doc.kyc_doc_id === document.kyc_doc_id 
+          ? { ...doc, action_status: 'Review', remark: null, active: true }
+          : doc
+      ));
+      alert('เปิดใช้งานเอกสารใหม่สำเร็จ');
+    
+  } catch (error) {
+    console.error('Failed to reactivate document:', error);
+    alert('เปิดใช้งานเอกสารใหม่ไม่สำเร็จ');
+  }
+};
+
+// 5. Handler สำหรับ Required (ใหม่!)
+const handleRequiredDocument = async (document: KycDocument, reason: string) => {
+  console.log("req handleRequiredDocument => ", document)
+  try {
+    const response = await axios.post('/api/kyc/set-action-document', {
+      kyc_id: document.kyc_id,
+      customer_id: document.user_id,
+      doctype_id: document.doctype_id,
+      doc_type: document.doc_type,
+      position: document.position,
+      document_no: document.document_no,
+      document_info: document.document_info,
+      action: "required",
+      ict_mapping_id: document.ict_mapping_id,
+      remark: reason
+    });
+      
+      setDocuments(prev => prev.map(doc => 
+        doc.kyc_doc_id === document.kyc_doc_id 
+          ? { ...doc, action_status: 'Required', remark: "ขอเอกสารเพิ่มเติม : " + reason}
+          : doc
+      ));
+      alert('ส่งคำขอเอกสารเพิ่มเติมสำเร็จ');
+ 
+  } catch (error) {
+    console.error('Failed to required document:', error);
+    alert('ส่งคำขอเอกสารเพิ่มเติมไม่สำเร็จ');
+  }
+};
+// 6. Handler สำหรับ Selfe
+const handleSelfieAction = () => {
+  const selfieDocId = selfeIMG ?? 0;
+  
+  // ถ้ามี preview file ใหม่ ให้ save
+  if (previewUrls[selfieDocId]) {
+    // ใช้ Partial เพื่อให้ส่งแค่ fields ที่จำเป็น
+    const selfieDoc: Partial<KycDocument> & Pick<KycDocument, 'kyc_doc_id'> = {
+      kyc_doc_id: selfieDocId,
+      kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id ?? 0,
+      user_id: customerInfo?.customer_data.customer.user_id ?? 0,
+      doc_type: "SELFIE",
+      doctype_id:310,
+      document_info: "Selfie",
+      action: "approve",
+      rotationAngle: rotationAngles[selfieDocId] || 0,
+      position: "FRONT"
+    };
+    
+    const rotation = rotationAngles[selfieDocId] || 0;
+    handleSaveDocument(selfieDoc as KycDocument, rotation);
+  } else {
+    // ถ้ายังไม่มีไฟล์ ให้เปิด popup เพื่อ upload
+    openPopup(selfieDocId);
+  }
 };
 
   useEffect(() => {
@@ -512,6 +674,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   useEffect(() => {
     const selfieDoc = customerInfo?.kyc_data.kyc_documents?.find((d) => d.document_info === "Selfie");
     setSelfieIMG(selfieDoc?.kyc_doc_id ?? null);
+    setSelfieDOC(selfieDoc)
   }, []);
 
   return (
@@ -526,26 +689,45 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <div className="relative flex flex-col items-center">
             <div className="w-24 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-2">
-              {selfeIMG ? (
+              {previewUrls[selfeIMG ?? 0] ? (
+                // กรณีมี preview image (ไฟล์ที่เลือกใหม่)
+                <img
+                  src={previewUrls[selfeIMG ?? 0]}
+                  alt="selfie preview"
+                  className="w-20 h-20 object-contain cursor-pointer transition-transform mx-auto"
+                  style={{
+                    transform: `rotate(${rotationAngles[selfeIMG ?? 0] ?? 0}deg)`,
+                  }}
+                  onClick={() => openPopup(selfeIMG ?? 0)}
+                />
+              ) : selfeIMG && selfeIMG !== 0 ? (
+                // กรณีมี selfie ใน database แล้ว
                 <img
                   src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG}`}
-                  alt="doc"
-                  className="w-20 h-20 object-contain cursor-pointer transition-transform"
+                  alt="selfie"
+                  className="w-20 h-20 object-contain cursor-pointer transition-transform mx-auto"
                   style={{
                     transform: `rotate(${rotationAngles[selfeIMG] || 0}deg)`,
                   }}
                   onClick={() => openPopup(selfeIMG)}
                 />
               ) : (
-                <div className="text-center text-gray-500">
+                // กรณียังไม่มี selfie (placeholder)
+                <div
+                  className="text-center text-gray-500 cursor-pointer"
+                  onClick={() => openPopup(0)} // ใช้ 0 สำหรับ placeholder
+                >
                   <User className="w-6 h-6 mx-auto mb-1" />
                   <p className="text-xs font-medium">IMG</p>
                   <p className="text-xxs">selfie</p>
                 </div>
               )}
             </div>
-            <button className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs">
-              Upload
+            <button
+              className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs"
+              onClick={() => handleSelfieAction()}
+            >
+              {previewUrls[selfeIMG ?? 0] ? "Save" : "Upload"}
             </button>
           </div>
           <div className=" rounded-md p-4">
@@ -633,364 +815,370 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               <p className="text-gray-900 text-sm mb-1 mr-2">{`${kyc?.ict_approve_at} `}</p>
             </div>
           </div>
-        </div>               
+        </div>
       </div>
 
       <form onSubmit={submitButtonHandler} id="customerForm">
-          <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
-            <div className="flex items-center mb-4">
-              <BookUser className="w-5 h-5 text-green-600 mr-2" />
-              <h2 className="text-xl font-semibold text-gray-800">
-                Personal Detail
-              </h2>
+        <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
+          <div className="flex items-center mb-4">
+            <BookUser className="w-5 h-5 text-green-600 mr-2" />
+            <h2 className="text-xl font-semibold text-gray-800">
+              Personal Detail
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+            <InputCustom
+              name="Frist Name"
+              title="Frist Name"
+              type="text"
+              placeholder="frist name"
+              value={Fullname}
+              onChange={(e) => setFullname(e.target.value)}
+              required
+            />
+
+            <InputCustom
+              name="Mobile Name"
+              title="Mobile Name"
+              type="text"
+              placeholder="mobile name"
+              value={MobileNo}
+              onChange={(e) => setMobileNo(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="Email"
+              title="Email Name"
+              type="text"
+              placeholder="email"
+              value={Email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+
+            <div className="flex flex-col md:flex-row mt-4">
+              <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-xs">DOB</div>
+              <div className="date-box rounded-md relative w-full border border-[--border-color] py force-light-background">
+                <Datepicker
+                  useRange={false}
+                  asSingle={true}
+                  displayFormat={"DD/MM/YYYY"}
+                  placeholder="DOB"
+                  inputClassName="rounded-md min-h-[42px] text-[--text-all] ss:text-[12px] xs:text-sm placeholder:pl-0  w-full"
+                  value={dob}
+                  onChange={(e) => handleChangeStartDate(e!.startDate)}
+                  toggleIcon={() => false}
+                  inputId="start_date"
+                />
+                <label
+                  className="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer"
+                  htmlFor="start_date"
+                >
+                  <IconCalendar className="text-[20px]" />
+                </label>
+              </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-              <InputCustom
-                name="Frist Name"
-                title="Frist Name"
-                type="text"
-                placeholder="frist name"
-                value={Fullname}
-                onChange={(e) => setFullname(e.target.value)}
-                required
-              />
-
-              <InputCustom
-                name="Mobile Name"
-                title="Mobile Name"
-                type="text"
-                placeholder="mobile name"
-                value={MobileNo}
-                onChange={(e) => setMobileNo(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="Email"
-                title="Email Name"
-                type="text"
-                placeholder="email"
-                value={Email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-
-              <div className="flex flex-col md:flex-row mt-4">
-                <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-xs">DOB</div>
-                <div className="date-box rounded-md relative w-full border border-[--border-color] py force-light-background">
-                  <Datepicker
-                    useRange={false}
-                    asSingle={true}
-                    displayFormat={"DD/MM/YYYY"}
-                    placeholder="DOB"
-                    inputClassName="rounded-md min-h-[42px] text-[--text-all] ss:text-[12px] xs:text-sm placeholder:pl-0  w-full"
-                    value={dob}
-                    onChange={(e) => handleChangeStartDate(e!.startDate)}
-                    toggleIcon={() => false}
-                    inputId="start_date"
-                  />
-                  <label
-                    className="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer"
-                    htmlFor="start_date"
-                  >
-                    <IconCalendar className="text-[20px]" />
-                  </label>
-                </div>
+            <div className="flex flex-col md:flex-row mt-4">
+              <div className="mb-2 md:mb-0 md:mr-3  mt-3 text-sm ml-1">
+                Gender
               </div>
-              <div className="flex flex-col md:flex-row mt-4">
-                <div className="mb-2 md:mb-0 md:mr-3  mt-3 text-sm ml-1">
-                  Gender
-                </div>
-                <label className="label justify-start cursor-pointer">
-                  <input
-                    type="radio"
-                    name="gender"
-                    className="radio checked:bg-primary"
-                    value={Gender}
-                    checked={Gender === "M"}
-                    onChange={() => setGender("M")}
-                  />
-                  <span className="label-text ml-2">Male</span>
-                </label>
-                <label className="label justify-start cursor-pointer ml-4">
-                  <input
-                    type="radio"
-                    name="gender"
-                    className="radio checked:bg-primary"
-                    value={Gender}
-                    checked={Gender === "F"}
-                    onChange={() => setGender("F")}
-                  />
-                  <span className="label-text ml-2">Female</span>
-                </label>
+              <label className="label justify-start cursor-pointer">
+                <input
+                  type="radio"
+                  name="gender"
+                  className="radio checked:bg-primary"
+                  value={Gender}
+                  checked={Gender === "M"}
+                  onChange={() => setGender("M")}
+                />
+                <span className="label-text ml-2">Male</span>
+              </label>
+              <label className="label justify-start cursor-pointer ml-4">
+                <input
+                  type="radio"
+                  name="gender"
+                  className="radio checked:bg-primary"
+                  value={Gender}
+                  checked={Gender === "F"}
+                  onChange={() => setGender("F")}
+                />
+                <span className="label-text ml-2">Female</span>
+              </label>
+            </div>
+            <div className="flex flex-col md:flex-row mt-4">
+              <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-sm ml-1">
+                Marital
               </div>
-              <div className="flex flex-col md:flex-row mt-4">
-                <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-sm ml-1">
-                  Marital
-                </div>
-                <label className="label justify-start cursor-pointer">
-                  <input
-                    type="radio"
-                    name="marital"
-                    className="radio checked:bg-primary"
-                    value={Marital}
-                    checked={Marital === "M"}
-                    onChange={() => setMarital("M")}
-                  />
-                  <span className="label-text ml-2">Yes</span>
-                </label>
-                <label className="label justify-start cursor-pointer ml-4">
-                  <input
-                    type="radio"
-                    name="marital"
-                    className="radio checked:bg-primary"
-                    value={Marital}
-                    checked={Marital === "S"}
-                    onChange={() => setMarital("S")}
-                  />
-                  <span className="label-text ml-2">No</span>
-                </label>
-              </div>
+              <label className="label justify-start cursor-pointer">
+                <input
+                  type="radio"
+                  name="marital"
+                  className="radio checked:bg-primary"
+                  value={Marital}
+                  checked={Marital === "M"}
+                  onChange={() => setMarital("M")}
+                />
+                <span className="label-text ml-2">Yes</span>
+              </label>
+              <label className="label justify-start cursor-pointer ml-4">
+                <input
+                  type="radio"
+                  name="marital"
+                  className="radio checked:bg-primary"
+                  value={Marital}
+                  checked={Marital === "S"}
+                  onChange={() => setMarital("S")}
+                />
+                <span className="label-text ml-2">No</span>
+              </label>
+            </div>
 
-              <div className="flex flex-col ">
+            <div className="flex flex-col ">
+              {" "}
+              {/* Modified to flex-col */}
+              <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
+                Nationality
+              </div>
+              <div className="rounded-md relative w-full force-light-background">
                 {" "}
-                {/* Modified to flex-col */}
-                <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
-                  Nationality
-                </div>
-                <div className="rounded-md relative w-full force-light-background">
-                  {" "}
-                  {/* Removed date-box */}
-                  <Select
-                    classNamePrefix="select-custom"
-                    instanceId="Nationality"
-                    placeholder="Nationality"
-                    options={NationalityList}
-                    defaultValue={Nationality}
-                    value={Nationality}
-                    onChange={(item) => {
-                      setNationality(item as SelectOption);
-                      mappingNationality(item as SelectOption);
-                    }}
-                    isLoading={LoadingOwnerNationality}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col ">
-                <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
-                  Occupation
-                </div>
-                <div className="rounded-md relative w-full force-light-background">
-                  <Select
-                    classNamePrefix="select-custom"
-                    instanceId="Occupation"
-                    placeholder="Occupation"
-                    options={OccupationList}
-                    defaultValue={Occupation}
-                    value={Occupation}
-                    onChange={(item) => {
-                      setOccupation(item as SelectOption);
-                      mappingOccupation(item as SelectOption);
-                    }}
-                    isLoading={LoadingOwnerOccupation}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col ">
-                <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">Income</div>
-                <div className="rounded-md relative w-full force-light-background">
-                  <Select
-                    classNamePrefix="select-custom"
-                    instanceId="MonthlyIncome"
-                    placeholder="MonthlyIncome"
-                    options={MonthlyIncomeList}
-                    defaultValue={MonthlyIncome}
-                    value={MonthlyIncome}
-                    onChange={(item) => {
-                      setMonthlyIncome(item as SelectOption);
-                      mappingMonthlyIncomeList(item as SelectOption);
-                    }}
-                    isLoading={LoadingOwnerMonthlyIncome}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col ">
-                <InputCustom
-                  name="residential"
-                  title="Resident Type"
-                  type="text"
-                  placeholder="residential"
-                  value={Residential}
-                  onChange={(e) => setResidential(e.target.value)}
-                  required
+                {/* Removed date-box */}
+                <Select
+                  classNamePrefix="select-custom"
+                  instanceId="Nationality"
+                  placeholder="Nationality"
+                  options={NationalityList}
+                  defaultValue={Nationality}
+                  value={Nationality}
+                  onChange={(item) => {
+                    setNationality(item as SelectOption);
+                    mappingNationality(item as SelectOption);
+                  }}
+                  isLoading={LoadingOwnerNationality}
                 />
               </div>
+            </div>
+            <div className="flex flex-col ">
+              <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
+                Occupation
+              </div>
+              <div className="rounded-md relative w-full force-light-background">
+                <Select
+                  classNamePrefix="select-custom"
+                  instanceId="Occupation"
+                  placeholder="Occupation"
+                  options={OccupationList}
+                  defaultValue={Occupation}
+                  value={Occupation}
+                  onChange={(item) => {
+                    setOccupation(item as SelectOption);
+                    mappingOccupation(item as SelectOption);
+                  }}
+                  isLoading={LoadingOwnerOccupation}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col ">
+              <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">Income</div>
+              <div className="rounded-md relative w-full force-light-background">
+                <Select
+                  classNamePrefix="select-custom"
+                  instanceId="MonthlyIncome"
+                  placeholder="MonthlyIncome"
+                  options={MonthlyIncomeList}
+                  defaultValue={MonthlyIncome}
+                  value={MonthlyIncome}
+                  onChange={(item) => {
+                    setMonthlyIncome(item as SelectOption);
+                    mappingMonthlyIncomeList(item as SelectOption);
+                  }}
+                  isLoading={LoadingOwnerMonthlyIncome}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col ">
               <InputCustom
-                name="KYC level"
-                title="KYC Level"
+                name="residential"
+                title="Resident Type"
                 type="text"
-                placeholder="kyc level"
-                value={KycLevel}
-                readOnly
-                disabled={true}
-                onChange={(e) => setKycLevel(e.target.value)}
-              />
-              <InputCustom
-                name="Kyc score"
-                title="Kyc Score"
-                type="text"
-                placeholder="Kyc Score"
-                readOnly
-                disabled={true}
-                value={KycScore}
-                onChange={(e) => setKycScore(e.target.value)}
-              />
-              <InputCustom
-                name="Kyc risk status"
-                title="Kyc risk status"
-                type="text"
-                placeholder="Kyc risk status"
-                readOnly
-                disabled={true}
-                value={KycRiskStatus}
-                onChange={(e) => setKycRiskStatus(e.target.value)}
+                placeholder="residential"
+                value={Residential}
+                onChange={(e) => setResidential(e.target.value)}
+                required
               />
             </div>
+            <InputCustom
+              name="KYC level"
+              title="KYC Level"
+              type="text"
+              placeholder="kyc level"
+              value={KycLevel}
+              readOnly
+              disabled={true}
+              onChange={(e) => setKycLevel(e.target.value)}
+            />
+            <InputCustom
+              name="Kyc score"
+              title="Kyc Score"
+              type="text"
+              placeholder="Kyc Score"
+              readOnly
+              disabled={true}
+              value={KycScore}
+              onChange={(e) => setKycScore(e.target.value)}
+            />
+            <InputCustom
+              name="Kyc risk status"
+              title="Kyc risk status"
+              type="text"
+              placeholder="Kyc risk status"
+              readOnly
+              disabled={true}
+              value={KycRiskStatus}
+              onChange={(e) => setKycRiskStatus(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
+          <div className="flex items-center mb-4">
+            <MapPin className="w-5 h-5 text-green-600 mr-2" />
+            <h2 className="text-xl font-semibold text-gray-800">
+              Address Information
+            </h2>
+          </div>
+          <div className="flex items-center justify-between text-lg ">
+            <div>Word Detail</div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+            <InputCustom
+              name="Company Name"
+              title="company Name"
+              type="text"
+              placeholder="company name"
+              value={WorkCompanyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="Address"
+              title="Address"
+              type="text"
+              placeholder="Address"
+              value={WorkAddress}
+              onChange={(e) => setWorkAddress(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="SubDistrict"
+              title="SubDistrict"
+              type="text"
+              placeholder="SubDistrict"
+              value={WorkSubDistrict}
+              onChange={(e) => setWorkSubDistrict(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="City"
+              title="City"
+              type="text"
+              placeholder="City"
+              value={WorkCity}
+              onChange={(e) => setWorkCity(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="State"
+              title="State"
+              type="text"
+              placeholder="State"
+              value={WorkState}
+              onChange={(e) => setWorkState(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="Zipcode"
+              title="Zipcode"
+              type="text"
+              placeholder="Zipcode"
+              value={WorkZipcode}
+              onChange={(e) => setWorkZipcode(e.target.value)}
+              required
+            />
           </div>
 
-          <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
-            <div className="flex items-center mb-4">
-              <MapPin className="w-5 h-5 text-green-600 mr-2" />
-              <h2 className="text-xl font-semibold text-gray-800">
-                Address Information
-              </h2>
-            </div>
-            <div className="flex items-center justify-between text-lg ">
-              <div>Word Detail</div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-              <InputCustom
-                name="Company Name"
-                title="company Name"
-                type="text"
-                placeholder="company name"
-                value={WorkCompanyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="Address"
-                title="Address"
-                type="text"
-                placeholder="Address"
-                value={WorkAddress}
-                onChange={(e) => setWorkAddress(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="SubDistrict"
-                title="SubDistrict"
-                type="text"
-                placeholder="SubDistrict"
-                value={WorkSubDistrict}
-                onChange={(e) => setWorkSubDistrict(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="City"
-                title="City"
-                type="text"
-                placeholder="City"
-                value={WorkCity}
-                onChange={(e) => setWorkCity(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="State"
-                title="State"
-                type="text"
-                placeholder="State"
-                value={WorkState}
-                onChange={(e) => setWorkState(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="Zipcode"
-                title="Zipcode"
-                type="text"
-                placeholder="Zipcode"
-                value={WorkZipcode}
-                onChange={(e) => setWorkZipcode(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-lg">
-              <div>Contact Detail</div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-              <InputCustom
-                name="Address"
-                title="Address"
-                type="text"
-                placeholder="Address"
-                value={ContactAddress}
-                onChange={(e) => setContactAddress(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="SubDistrict"
-                title="SubDistrict"
-                type="text"
-                placeholder="SubDistrict"
-                value={ContactSubDistrict}
-                onChange={(e) => setContactSubDistrict(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="City"
-                title="City"
-                type="text"
-                placeholder="City"
-                value={ContactCity}
-                onChange={(e) => setContactCity(e.target.value)}
-                required
-              />
-              <InputCustom
-                name="State"
-                title="State"
-                type="text"
-                placeholder="State"
-                value={ContactState}
-                onChange={(e) => setContactState(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-              <InputCustom
-                name="Zipcode"
-                title="Zipcode"
-                type="text"
-                placeholder="Zipcode"
-                value={ContactZipcode}
-                onChange={(e) => setContactZipcode(e.target.value)}
-                required
-              />
-            </div>
+          <div className="flex items-center justify-between text-lg">
+            <div>Contact Detail</div>
           </div>
-        </form> 
-      
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+            <InputCustom
+              name="Address"
+              title="Address"
+              type="text"
+              placeholder="Address"
+              value={ContactAddress}
+              onChange={(e) => setContactAddress(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="SubDistrict"
+              title="SubDistrict"
+              type="text"
+              placeholder="SubDistrict"
+              value={ContactSubDistrict}
+              onChange={(e) => setContactSubDistrict(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="City"
+              title="City"
+              type="text"
+              placeholder="City"
+              value={ContactCity}
+              onChange={(e) => setContactCity(e.target.value)}
+              required
+            />
+            <InputCustom
+              name="State"
+              title="State"
+              type="text"
+              placeholder="State"
+              value={ContactState}
+              onChange={(e) => setContactState(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+            <InputCustom
+              name="Zipcode"
+              title="Zipcode"
+              type="text"
+              placeholder="Zipcode"
+              value={ContactZipcode}
+              onChange={(e) => setContactZipcode(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+      </form>
+
       <DocumentTable
         documents={documents}
         openPopup={openPopup}
         rotationAngles={rotationAngles}
-        previewUrls={previewUrls}  
+        previewUrls={previewUrls}
+        country=""
         closePopup={closePopup}
         saveRotation={saveRotation}
         handleSaveDocument={handleSaveDocument}
         handleDeleteDocument={handleDeleteDocument}
         handleAddDocument={addNewDocument}
+        // เพิ่ม handlers ใหม่
+        handleApproveDocument={handleApproveDocument}
+        handleRejectDocument={handleRejectDocument}
+        handleInactiveDocument={handleInactiveDocument}
+        handleReactivateDocument={handleReactivateDocument}
+        handleRequiredDocument={handleRequiredDocument}
       />
-    
 
       <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
         {error !== "" ? (
@@ -1025,13 +1213,13 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         </div>
       </div>
 
-       {isPopupOpen  && (
+      {isPopupOpen && (
         <ImagePopup
           imageUrl={popupImageUrl || ""}
           onClose={closePopup}
-          onSaveRotation={saveRotation}     
-          onUpload={handleUploadFromPopup}   
-          isLoading={isImageLoading}          
+          onSaveRotation={saveRotation}
+          onUpload={handleUploadFromPopup}
+          isLoading={isImageLoading}
         />
       )}
     </>

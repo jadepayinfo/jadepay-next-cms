@@ -34,6 +34,7 @@ export interface Customer {
   updated_at: string;      
   deleted_by: number;
   deleted_at: string | null;
+  source: string | null;
 }
 
 export interface CustomerInfo {
