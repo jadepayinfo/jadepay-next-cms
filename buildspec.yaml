@@ -1,0 +1,38 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME
+      - IMAGE_URI=$REPOSITORY_URI:$(date +%Y-%m-%d).$CODEBUILD_BUILD_NUMBER
+      - BUILD_COMMIT=$CODEBUILD_RESOLVED_SOURCE_VERSION:$(date +%Y-%m-%d)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - echo NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL >> .env
+      - echo NEXT_API_PARAM_CONFIG_URL=$NEXT_API_PARAM_CONFIG_URL >> .env
+      - printf '{"commit":"%s","time":"%s"}' $CODEBUILD_RESOLVED_SOURCE_VERSION $(date +%Y-%m-%d) > build.json
+      - >
+        docker build -t app-image .
+        --build-arg DOCKER_SOURCE_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/node:18-alpine
+      - docker tag app-image $REPOSITORY_URI
+      - docker tag app-image $IMAGE_URI
+      # - bash generate_taskdef.sh
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push -a $REPOSITORY_URI
+      # - printf '{"ImageURI":"%s"}' $IMAGE_URI > imageDetail.json
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $IMAGE_URI > imagedefinitions.json
+artifacts:
+    files:
+      # code deploy - blue/green
+      # - imageDetail.json
+      # - appspec.yaml
+      # - taskdef.json
+      # plain ecs - debug
+      - imagedefinitions.json

@@ -1,0 +1,80 @@
+.warp-scroll-x {
+  display: table;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.menu-sidebar{
+  color: hsl(var(--bc) / var(--tw-text-opacity, 1));
+  @apply bg-base-100;
+}
+
+.scroll-ui {
+  &::-webkit-scrollbar {
+    width: 5px;
+    -webkit-appearance: none;
+  }
+  &::-webkit-scrollbar:vertical {
+    width: 5px;
+  }
+  &::-webkit-scrollbar:horizontal {
+    height: 5px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--p) / 0.3);
+    border-radius: 10px;
+    &:hover {
+      background-color: hsl(var(--p) / 0.6);
+    }
+  }
+  &::-webkit-scrollbar-track {
+    border-radius: 8px;
+  }
+}
+
+.scroll-ui-large {
+  &::-webkit-scrollbar {
+    width: 8px;
+    -webkit-appearance: none;
+  }
+  &::-webkit-scrollbar:vertical {
+    width: 8px;
+  }
+  &::-webkit-scrollbar:horizontal {
+    height: 10px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--p) / 0.3);
+    border-radius: 10px;
+    &:hover {
+      background-color: hsl(var(--p) / 0.6);
+    }
+  }
+  &::-webkit-scrollbar-track {
+    border-radius: 8px;
+  }
+}
+
+.scroll-dark {
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar:vertical {
+    width: 5px;
+  }
+  &::-webkit-scrollbar:horizontal {
+    height: 10px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--p) / 0.3);
+    border-radius: 10px;
+    &:hover {
+      background-color: hsl(var(--p) / 0.6);
+    }
+  }
+  &::-webkit-scrollbar-track {
+    border-radius: 8px;
+    background-color: transparent;
+  }
+}
+

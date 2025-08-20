@@ -1,0 +1,9 @@
+version: '3.4'
+
+services:
+  client-next:
+    container_name: client-next
+    build: .
+    restart: always
+    ports: 
+      - 3000:3000
