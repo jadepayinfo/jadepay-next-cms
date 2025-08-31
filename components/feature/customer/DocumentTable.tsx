@@ -64,11 +64,13 @@ const DocumentTable: React.FC<Props> = ({
     secondary: SelectOption[];
     additional: SelectOption[];
     ictMapping: SelectOption[];
+    nationality: SelectOption[];
   }>({
     primary: [],
     secondary: [],
     additional: [],
-    ictMapping: []
+    ictMapping: [],
+    nationality: []
   });
   const [optionsLoaded, setOptionsLoaded] = useState(false);
 
@@ -79,11 +81,12 @@ const DocumentTable: React.FC<Props> = ({
       
       try {
         const mappedCountry = getCountryCode(country);
-        const [resPrimary, resSecondary, resAdditional, respICTMapping] = await Promise.all([
+        const [resPrimary, resSecondary, resAdditional, respICTMapping,resNationality] = await Promise.all([
           axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "primary_document_" + mappedCountry } }),
           axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "secondary_document_" + mappedCountry } }),
           axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "additional_document_" + mappedCountry } }),
           axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "ict_mapping" } }),
+          axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "country" } }),
         ]);
 
         const mapToOptions = (data: any): SelectOption[] => 
@@ -95,7 +98,8 @@ const DocumentTable: React.FC<Props> = ({
           primary: mapToOptions(resPrimary.data),
           secondary: mapToOptions(resSecondary.data), 
           additional: mapToOptions(resAdditional.data),
-          ictMapping: mapToOptions(respICTMapping.data)
+          ictMapping: mapToOptions(respICTMapping.data),
+          nationality: mapToOptions(resNationality.data)
         });
         
         setOptionsLoaded(true);
@@ -160,6 +164,9 @@ const DocumentTable: React.FC<Props> = ({
                   Expired Date
                 </th>
                 <th className="w-48 px-3 py-3 border-b font-medium text-gray-700">
+                  Issued Country
+                </th>
+                <th className="w-48 px-3 py-3 border-b font-medium text-gray-700">
                   ICT Mapping
                 </th>
                 <th className="w-28 px-3 py-3 border-b font-medium text-gray-700">
@@ -175,7 +182,6 @@ const DocumentTable: React.FC<Props> = ({
             </thead>
             <tbody>
               {documents
-                .filter((doc) => doc.doc_type !== "SELFIE") // กรองออกก่อน
                 .map((doc, index) => (
                   <DocumentRow
                     key={doc.kyc_doc_id}

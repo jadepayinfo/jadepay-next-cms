@@ -78,6 +78,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (documentNoValue) formData.append("document_no", documentNoValue);
     }
 
+    if (fields.issue_country) {
+      const issueCountryValue = Array.isArray(fields.issue_country) ? fields.issue_country[0] : fields.issue_country;
+      if (issueCountryValue) formData.append("issue_country", issueCountryValue);
+    }
+
     if (fields.issued_date) {
       const issuedDateValue = Array.isArray(fields.issued_date) ? fields.issued_date[0] : fields.issued_date;
       if (issuedDateValue) formData.append("issued_date", issuedDateValue);

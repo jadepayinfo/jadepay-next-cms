@@ -1,16 +1,16 @@
 import { useRef, useState, useEffect } from "react";
 import InputCustom from "@/components/input/input";
 import { getDateTimeNow, unixToDateString } from "@/lib/time";
-import { 
-  FileText, 
-  Save, 
-  CheckCircle, 
-  XCircle, 
-  Archive, 
+import {
+  FileText,
+  Save,
+  CheckCircle,
+  XCircle,
+  Archive,
   RotateCcw,
   AlertCircle,
   Info,
-  FileWarning
+  FileWarning,
 } from "lucide-react";
 import { KycDocument } from "@/model/kyc";
 
@@ -31,6 +31,7 @@ interface DocumentRowProps {
     secondary: SelectOption[];
     additional: SelectOption[];
     ictMapping: SelectOption[];
+    nationality: SelectOption[];
   };
   optionsLoaded: boolean;
   onSaveDocument: (doc: KycDocument, rotation: number) => void;
@@ -57,9 +58,12 @@ const initStartDate = (data?: number) => {
 
 const getCountryCode = (country: string): string => {
   switch (country) {
-    case "MMR": return "mm";
-    case "THA": return "th";
-    default: return "mm";
+    case "MMR":
+      return "mm";
+    case "THA":
+      return "th";
+    default:
+      return "mm";
   }
 };
 
@@ -88,34 +92,44 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showInactiveModal, setShowInactiveModal] = useState(false);
   const [showRequiredModal, setShowRequiredModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [inactiveReason, setInactiveReason] = useState('');
-  const [requiredReason, setRequiredReason] = useState('');
+  const [rejectReason, setRejectReason] = useState("");
+  const [inactiveReason, setInactiveReason] = useState("");
+  const [requiredReason, setRequiredReason] = useState("");
 
   // Document states
   const [docRole, setDocRole] = useState(() => {
     const initial = doc.document_info || "";
-    return initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country);
+    return (
+      initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country)
+    );
   });
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
   const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
   const [position, setPosition] = useState(doc.position || "");
+  const [issue_country, setIssueCountry] = useState(doc.issue_country || "");
 
   // Date states
   const dateIssuedString = doc.issued_date ?? "";
   const dateExpiredString = doc.expired_date ?? "";
   const dateIssued = new Date(dateIssuedString);
   const dateExpired = new Date(dateExpiredString);
-  const [issuedDate, setIssuedDate] = useState(() => initStartDate(dateIssued.getTime() / 1000));
-  const [expiredDate, setExpiredDate] = useState(() => initStartDate(dateExpired.getTime() / 1000));
+  const [issuedDate, setIssuedDate] = useState(() =>
+    initStartDate(dateIssued.getTime() / 1000)
+  );
+  const [expiredDate, setExpiredDate] = useState(() =>
+    initStartDate(dateExpired.getTime() / 1000)
+  );
 
   const mappedCountry = getCountryCode(country);
+  const isSelfie = docRole.includes("selfie");
+
   // Helper functions
   const getDocumentOptions = (docRole: string): SelectOption[] => {
     if (docRole.includes("primary")) return globalOptions.primary;
     else if (docRole.includes("secondary")) return globalOptions.secondary;
-    else return globalOptions.additional;
+    else if (docRole.includes("additional")) return globalOptions.additional;
+    else return [];
   };
 
   const formatDate = (date: Date | null | undefined): string | null => {
@@ -126,7 +140,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   // Computed values
   const currentDocOptions = optionsLoaded ? getDocumentOptions(docRole) : [];
   const currentICTOptions = optionsLoaded ? globalOptions.ictMapping : [];
-  
+  const currentNationalityOptions = optionsLoaded ? globalOptions.nationality : [];
   // Event handlers
   const handleDocRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setDocRole(e.target.value);
@@ -136,10 +150,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     const selectedDate = new Date(value);
     const currentDateState = isIssued ? issuedDate : expiredDate;
     const currentDate = new Date(currentDateState.startDate!);
-    
+
     selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
     const newDateState = { startDate: selectedDate, endDate: selectedDate };
-    
+
     if (isIssued) {
       setIssuedDate(newDateState);
     } else {
@@ -157,8 +171,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       issued_date: formatDate(issuedDate.startDate),
       expired_date: formatDate(expiredDate.startDate),
       ict_mapping_id: ictId,
-      status:"save"
+      status: "review",
+      issue_country:issue_country
     };
+    setHasUnsavedChanges(false);
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
   };
 
@@ -169,46 +185,21 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   const closeRejectModal = () => {
     setShowRejectModal(false);
-    setRejectReason('');
+    setRejectReason("");
   };
 
   const confirmReject = async () => {
     if (!rejectReason.trim()) {
-      alert('กรุณาระบุเหตุผล');
+      alert("กรุณาระบุเหตุผล");
       return;
     }
-    
+
     if (onRejectDocument) {
       try {
         await onRejectDocument(doc, rejectReason);
         closeRejectModal();
       } catch (error) {
-        console.error('Failed to reject document:', error);
-      }
-    }
-  };
-
-  const openInactiveModal = () => {
-    setShowInactiveModal(true);
-  };
-
-  const closeInactiveModal = () => {
-    setShowInactiveModal(false);
-    setInactiveReason('');
-  };
-
-  const confirmInactive = async () => {
-    if (!inactiveReason.trim()) {
-      alert('กรุณาระบุเหตุผล');
-      return;
-    }
-    
-    if (onInactiveDocument) {
-      try {
-        await onInactiveDocument(doc, inactiveReason);
-        closeInactiveModal();
-      } catch (error) {
-        console.error('Failed to inactive document:', error);
+        console.error("Failed to reject document:", error);
       }
     }
   };
@@ -219,54 +210,172 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   const closeRequiredModal = () => {
     setShowRequiredModal(false);
-    setRequiredReason('');
+    setRequiredReason("");
   };
 
   const confirmRequired = async () => {
     if (!requiredReason.trim()) {
-      alert('กรุณาระบุเหตุผล');
+      alert("กรุณาระบุเหตุผล");
       return;
     }
-    
-  
+
     if (onRequiredDocument) {
       try {
-          const updated: KycDocument = {
-            ...doc,
-            doctype_id: docType,
-            document_info: docRole,
-            position,
-            document_no: docIdNo,
-            issued_date: formatDate(issuedDate.startDate),
-            expired_date: formatDate(expiredDate.startDate),
-            ict_mapping_id: ictId,
-            status:"required"
-          };
+        const updated: KycDocument = {
+          ...doc,
+          doctype_id: docType,
+          document_info: docRole,
+          position,
+          document_no: docIdNo,
+          issued_date: formatDate(issuedDate.startDate),
+          expired_date: formatDate(expiredDate.startDate),
+          ict_mapping_id: ictId,
+          status: "required",
+        };
 
         await onRequiredDocument(updated, requiredReason);
         closeRequiredModal();
       } catch (error) {
-        console.error('Failed to required document:', error);
+        console.error("Failed to required document:", error);
+      }
+    }
+  };
+  
+  const handleApprove = async () => {
+
+    if (hasUnsavedChanges) {
+      alert("กรุณาบันทึกข้อมูลก่อนทำการอนุมัติเอกสาร");
+      return;
+    }
+
+    const validation = validateDocument();
+    
+    if (!validation.isValid) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วน:\n\n" + validation.errors.join("\n"));
+      return;
+    }
+
+    if (onApproveDocument) {
+      try {
+        const updated: KycDocument = {
+          ...doc,
+          doctype_id: docType,
+          document_info: docRole,
+          position,
+          document_no: docIdNo,
+          issued_date: formatDate(issuedDate.startDate),
+          expired_date: formatDate(expiredDate.startDate),
+          ict_mapping_id: ictId,
+          status: "approve",
+        };
+        
+        await onApproveDocument(updated);
+      } catch (error) {
+        console.error("Failed to approve document:", error);
       }
     }
   };
 
-  const reactivateDocument = async () => {
-    if (window.confirm('คุณต้องการเปิดใช้งานเอกสารนี้ใหม่หรือไม่?')) {
-      if (onReactivateDocument) {
-        try {
-          await onReactivateDocument(doc);
-        } catch (error) {
-          console.error('Failed to reactivate document:', error);
+  // Validation function
+  const validateDocument = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    // ตรวจสอบ Document Role
+    if (!docRole) {
+      errors.push("กรุณาเลือก Document Role");
+    }
+
+    // ถ้าไม่ใช่ selfie ให้ validate field อื่นๆ
+    if (!isSelfie) {
+      // Document Type
+      if (docType === 0) {
+        errors.push("กรุณาเลือก Document Type");
+      }
+
+      // Position (สำหรับเอกสารที่ต้องมี FRONT/BACK)
+      if (!position && docRole.includes("document")) {
+        errors.push("กรุณาเลือก Position");
+      }
+
+      // Document No (สำหรับเอกสารที่มีเลขที่)
+      if (!docIdNo.trim() && docRole.includes("document")) {
+        errors.push("กรุณากรอก Document No");
+      }
+
+      // Issued Date (สำหรับเอกสารที่มีวันที่ออก)
+      if (!formatDate(issuedDate.startDate) && docRole.includes("document")) {
+        errors.push("กรุณาเลือก Issued Date");
+      }
+
+      // Expired Date (สำหรับเอกสารที่มีวันหมดอายุ)
+      if (!formatDate(expiredDate.startDate) && docRole.includes("document")) {
+        errors.push("กรุณาเลือก Expired Date");
+      }
+
+      // เช็คว่า Expired Date ต้องมากกว่า Issued Date
+      if (formatDate(issuedDate.startDate) && formatDate(expiredDate.startDate)) {
+        const issued = new Date(formatDate(issuedDate.startDate)!);
+        const expired = new Date(formatDate(expiredDate.startDate)!);
+        if (expired <= issued) {
+          errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
         }
       }
+
+      // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
+      if (ictId === 0 && currentICTOptions.length > 0) {
+        errors.push("กรุณาเลือก ICT Mapping");
+      }
     }
+
+    return { isValid: errors.length === 0, errors };
   };
 
   // Status logic
   const status = doc.status;
-  const isInactive = status === 'Inactive' || !doc.action;
-  const isRejected = status === 'Rejected';
+  const isRejected = status === "Rejected";
+
+const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+ const checkForChanges = () => {
+  // check File
+  let checkFile_Change = false
+  if ( rotationAngles[doc.kyc_doc_id]!= 0){
+    checkFile_Change = false
+  }
+
+  //check control  
+  const currentData = {
+      docRole,
+      docType,
+      position,
+      docIdNo,
+      ictId,
+      issuedDate: formatDate(issuedDate.startDate),
+      expiredDate: formatDate(expiredDate.startDate)
+    };
+   
+    const originalData = {
+      docRole: (doc.document_info || "").toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country),
+      docType: doc.doctype_id,
+      position: doc.position || "",
+      docIdNo: doc.document_no ?? "",
+      ictId: doc.ict_mapping_id ?? 0,
+      issuedDate: formatDate(issuedDate.startDate),
+      expiredDate: formatDate(expiredDate.startDate),
+    };
+
+    const hasChanges = JSON.stringify(currentData) !== JSON.stringify(originalData);
+  console.log("checkFile_Change : ", checkFile_Change)
+    if (hasChanges || checkFile_Change){
+      setHasUnsavedChanges(true);
+    }else{
+      setHasUnsavedChanges(false);
+    }
+    
+    return hasChanges;
+  };
+    useEffect(() => {
+    checkForChanges();
+  }, [docRole, docType, position, docIdNo, ictId, issuedDate, expiredDate, rotationAngles[doc.kyc_doc_id]]);
 
   return (
     <>
@@ -332,9 +441,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         {/* Document Type */}
         <td className="px-3 py-4">
           <select
-            className="select select-ui w-full"
-            value={docType === 0 ? "" : String(docType)}
+            className={`select select-ui w-full ${isSelfie ? "opacity-50 cursor-not-allowed" : ""}`}
+            value={isSelfie ? "" : docType === 0 ? "" : String(docType)}
             onChange={(e) => setDocType(Number(e.target.value))}
+            disabled={isSelfie}
           >
             <option value="" disabled>
               Document Type
@@ -353,6 +463,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
+            disabled={isSelfie}
           >
             <option value="" disabled>
               Position
@@ -372,6 +483,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             value={docIdNo}
             onChange={(e) => setDocIdNo(e.target.value)}
             noWrapperMargin
+            disabled={isSelfie}
           />
         </td>
 
@@ -381,10 +493,19 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             <input
               ref={issueDateRef}
               type="date"
-              className="relative w-full flex items-center border border-[--border-color] py force-light-background rounded-md"
-              style={{ border: "1px solid #d1d5db" }}
+              className={`relative w-full flex items-center border py force-light-background rounded-md ${
+                isSelfie
+                  ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
+                  : "border-[--border-color]"
+              }`}
+              style={
+                isSelfie
+                  ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
+                  : { border: "1px solid #d1d5db" }
+              }
               value={formatDate(issuedDate.startDate) || ""}
               onChange={(e) => handleDateChange(e.target.value, true)}
+              disabled={isSelfie}
             />
           </div>
         </td>
@@ -395,12 +516,40 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             <input
               ref={expireDateRef}
               type="date"
-              className="relative w-full flex items-center border border-[--border-color] py force-light-background rounded-md"
-              style={{ border: "1px solid #d1d5db" }}
+              className={`relative w-full flex items-center border py force-light-background rounded-md ${
+                isSelfie
+                  ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
+                  : "border-[--border-color]"
+              }`}
+              style={
+                isSelfie
+                  ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
+                  : { border: "1px solid #d1d5db" }
+              }
               value={formatDate(expiredDate.startDate) || ""}
               onChange={(e) => handleDateChange(e.target.value, false)}
+              disabled={isSelfie}
             />
           </div>
+        </td>
+
+        {/* Issue Country */}
+        <td className="px-3 py-4">
+          <select
+            className="select select-ui w-full"
+            value={issue_country === "" ? "" : issue_country}
+            onChange={(e) => setIssueCountry(e.target.value)}
+            disabled={isSelfie}
+          >
+            <option value="" disabled>
+              Issue Country
+            </option>
+            {currentNationalityOptions?.map((item) => (
+              <option key={item.label} value={item.label}>
+                {item.label}
+              </option>
+            ))}
+          </select>
         </td>
 
         {/* ICT Mapping */}
@@ -409,6 +558,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
             onChange={(e) => setICTID(Number(e.target.value))}
+            disabled={isSelfie}
           >
             <option value="" disabled>
               ICT Mapping
@@ -442,9 +592,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         <td className="px-3 py-4">
           {status === "approve" ? (
             // ถ้า status = approve ให้แสดงแค่ข้อความ
-           <div className="flex justify-center items-center">
-      <CheckCircle className="w-6 h-6 text-green-600" />
-    </div>
+            <div className="flex justify-center items-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
           ) : (
             <div className="flex flex-col gap-1">
               {/* บรรทัดที่ 1 - ปุ่มหลัก */}
@@ -464,7 +614,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                 {onApproveDocument && (
                   <div className="relative group">
                     <button
-                      onClick={() => onApproveDocument(doc)}
+                      onClick={handleApprove}
                       className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                     >
                       <CheckCircle className="w-4 h-4" />
@@ -475,6 +625,11 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                   </div>
                 )}
 
+                
+              </div>
+
+              {/* บรรทัดที่ 2 - ปุ่มรอง */}
+              <div className="flex gap-1 justify-center">
                 {onRejectDocument && (
                   <div className="relative group">
                     <button
@@ -488,10 +643,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* บรรทัดที่ 2 - ปุ่มรอง */}
-              <div className="flex gap-1 justify-center">
                 <div className="relative group">
                   <button
                     onClick={openRequiredModal}
@@ -503,18 +654,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                     ต้องการเพิ่มเติม
                   </div>
                 </div>
-
-                <div className="relative group">
-                  <button
-                    onClick={openInactiveModal}
-                    className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                  >
-                    <Archive className="w-4 h-4" />
-                  </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                    เอกสารไม่ใช้งาน
-                  </div>
-                </div>
+                
               </div>
             </div>
           )}
@@ -611,40 +751,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         </div>
       )}
 
-      {/* Inactive Modal */}
-      {showInactiveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <Archive className="w-6 h-6 text-gray-600" />
-              <h3 className="text-lg font-semibold">ทำให้เอกสารไม่ใช้งาน</h3>
-            </div>
-            <p className="text-gray-600 mb-4">
-              กรุณาระบุเหตุผลในการทำให้เอกสารนี้ไม่ใช้งาน
-            </p>
-            <textarea
-              value={inactiveReason}
-              onChange={(e) => setInactiveReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-3 h-24 resize-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-              placeholder="เช่น เอกสารซ้ำ, ผู้ใช้ขอให้หยุดใช้งาน, เปลี่ยนเอกสารใหม่..."
-            />
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={closeInactiveModal}
-                className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={confirmInactive}
-                className="flex-1 px-4 py-2 text-white bg-gray-600 rounded-md hover:bg-gray-700"
-              >
-                ยืนยัน
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

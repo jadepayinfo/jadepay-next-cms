@@ -1,22 +1,28 @@
 import { FC, FormEventHandler, useEffect, useRef, useState } from "react";
-import {CustomerAddressRequest, CustomerDataRequest, CustomerInfo } from "@/model/customer";
+import {
+  CustomerAddressRequest,
+  CustomerDataRequest,
+  CustomerInfo,
+} from "@/model/customer";
 import DocumentTable from "./DocumentTable";
 import { useRouter } from "next/router";
 import { getDateTimeNow, unixToDateString } from "@/lib/time";
 import { CatalogueItem } from "@/model/catalogueItem";
-import Datepicker, { DateRangeType, DateType } from "react-tailwindcss-datepicker";
+import Datepicker, {
+  DateRangeType,
+  DateType,
+} from "react-tailwindcss-datepicker";
 import axios from "axios";
-import { User,  FileText,  BookUser, MapPin} from "lucide-react";
+import { User, FileText, BookUser, MapPin } from "lucide-react";
 import InputCustom from "@/components/input/input";
 import { IconCalendar } from "@/components/icon";
 import Select from "react-select";
 import { ButtonFill, ButtonOutline } from "@/components/buttons";
 import ImagePopup from "./ImagePopup";
 import { KycDocument } from "@/model/kyc";
-import { Elsie_Swash_Caps } from "next/font/google";
-
+import AlertSBD from "@/components/share/modal/alert_sbd";
 interface Props {
- customerInfo?: CustomerInfo;
+  customerInfo?: CustomerInfo;
 }
 
 const initStartDate = (data?: number) => {
@@ -50,8 +56,12 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [error, setError] = useState("");
 
   // Selfie Image
-  const [selfeIMG, setSelfieIMG] = useState<number | undefined| null >(undefined);
-  const [selfeDoc, setSelfieDOC] = useState<KycDocument | undefined| null >(undefined);
+  const [selfeIMG, setSelfieIMG] = useState<number | undefined | null>(
+    undefined
+  );
+  const [selfeDoc, setSelfieDOC] = useState<KycDocument | undefined | null>(
+    undefined
+  );
   // Customer Info
   const [Fullname, setFullname] = useState(
     customerInfo?.customer_data?.customer?.fullname ?? ""
@@ -80,24 +90,35 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [KycRiskStatus, setKycRiskStatus] = useState(
     customerInfo?.kyc_data.kyc_data.kyc_risk_status ?? ""
   );
+
   // DDL Nationality
   const [NationalityList, setNationalityList] = useState<SelectOption[]>([]);
   const [Nationality, setNationality] = useState<SelectOption>();
   const [LoadingOwnerNationality, setLoadingOwnerNationality] = useState(false);
   const rawNationalityList = useRef<CatalogueItem[]>([]);
-  const [ownerNationality, setOwnerNationality] = useState<CatalogueItem | null>();
+  const [ownerNationality, setOwnerNationality] =
+    useState<CatalogueItem | null>();
   // DDL Occupation
   const [OccupationList, setOccupationList] = useState<SelectOption[]>([]);
   const [Occupation, setOccupation] = useState<SelectOption>();
   const [LoadingOwnerOccupation, setloadingOwnerOccupation] = useState(false);
   const rawOccupationList = useRef<CatalogueItem[]>([]);
   const [ownerOccupation, setOwnerOccupation] =    useState<CatalogueItem | null>();
+
+  const [otherOccupation, setOtherOccupation] = useState(customerInfo?.customer_data?.customer?.other_occupation ?? "");
+
   // DDL MonthlyIncome
-  const [MonthlyIncomeList, setMonthlyIncomeList] = useState<SelectOption[]>([] );
+  const [MonthlyIncomeList, setMonthlyIncomeList] = useState<SelectOption[]>(
+    []
+  );
   const [MonthlyIncome, setMonthlyIncome] = useState<SelectOption>();
-  const [LoadingOwnerMonthlyIncome, setLoadingOwnerMonthlyIncome] =    useState(false);
+  const [LoadingOwnerMonthlyIncome, setLoadingOwnerMonthlyIncome] =
+    useState(false);
   const rawMonthlyIncomeList = useRef<CatalogueItem[]>([]);
-  const [ownerMonthlyIncome, setOwnerMonthlyIncome] =    useState<CatalogueItem | null>();
+  const [ownerMonthlyIncome, setOwnerMonthlyIncome] =
+    useState<CatalogueItem | null>();
+
+
   //DOB
   const dateDOBString = customerInfo?.customer_data?.customer?.dob ?? "";
   const dateDOB = new Date(dateDOBString);
@@ -106,26 +127,48 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   );
   //Address
   const objaddress = customerInfo?.customer_data?.customer_address;
-  const objContractaddress = objaddress?.find( (i) => i?.address_type === "contact"  );
+  const objContractaddress = objaddress?.find(
+    (i) => i?.address_type === "contact"
+  );
   const objWorkctaddress = objaddress?.find((i) => i?.address_type === "work");
   const ContactAddressId = objContractaddress?.address_id ?? 0;
-  const [ContactAddress, setContactAddress] = useState(objContractaddress?.address ?? "");
-  const [ContactSubDistrict, setContactSubDistrict] = useState(objContractaddress?.sub_district ?? "");
-  const [ContactCity, setContactCity] = useState(objContractaddress?.city ?? "" );
-  const [ContactState, setContactState] = useState(objContractaddress?.state ?? "");
-  const [ContactZipcode, setContactZipcode] = useState(objContractaddress?.zipcode ?? "");
+  const [ContactAddress, setContactAddress] = useState(
+    objContractaddress?.address ?? ""
+  );
+  const [ContactSubDistrict, setContactSubDistrict] = useState(
+    objContractaddress?.sub_district ?? ""
+  );
+  const [ContactCity, setContactCity] = useState(
+    objContractaddress?.city ?? ""
+  );
+  const [ContactState, setContactState] = useState(
+    objContractaddress?.state ?? ""
+  );
+  const [ContactZipcode, setContactZipcode] = useState(
+    objContractaddress?.zipcode ?? ""
+  );
 
   const WorkAddressId = objWorkctaddress?.address_id ?? 0;
-  const [WorkCompanyName, setCompanyName] = useState(objWorkctaddress?.company_name ?? "");
-  const [WorkAddress, setWorkAddress] = useState(objWorkctaddress?.company_address ?? "");
-  const [WorkSubDistrict, setWorkSubDistrict] = useState(objWorkctaddress?.sub_district ?? "");
+  const [WorkCompanyName, setCompanyName] = useState(
+    objWorkctaddress?.company_name ?? ""
+  );
+  const [WorkAddress, setWorkAddress] = useState(
+    objWorkctaddress?.company_address ?? ""
+  );
+  const [WorkSubDistrict, setWorkSubDistrict] = useState(
+    objWorkctaddress?.sub_district ?? ""
+  );
   const [WorkCity, setWorkCity] = useState(objWorkctaddress?.city ?? "");
   const [WorkState, setWorkState] = useState(objWorkctaddress?.state ?? "");
-  const [WorkZipcode, setWorkZipcode] = useState(objWorkctaddress?.zipcode ?? "" );
+  const [WorkZipcode, setWorkZipcode] = useState(
+    objWorkctaddress?.zipcode ?? ""
+  );
 
   //docement
-  const [documents, setDocuments] = useState<KycDocument[]>(customerInfo?.kyc_data.kyc_documents ?? []);
-  const primaryDocs = documents.filter(doc =>
+  const [documents, setDocuments] = useState<KycDocument[]>(
+    customerInfo?.kyc_data.kyc_documents ?? []
+  );
+  const primaryDocs = documents.filter((doc) =>
     doc.document_info?.toLowerCase().includes("primary")
   );
 
@@ -134,7 +177,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   // popup open image & rotation
   const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
   const [currentDocId, setCurrentDocId] = useState<number | null>(null);
-  const [rotationAngles, setRotationAngles] = useState<Record<number, number>>({});
+  const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
+    {}
+  );
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
@@ -145,13 +190,13 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       let url: string | null = null;
       if (previewUrls[docId]) {
         url = previewUrls[docId];
-      } else if (docId===0) {
-        url=null
-      }else{
+      } else if (docId === 0) {
+        url = null;
+      } else {
         const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${docId}`);
         if (!resp.ok) throw new Error("Cannot fetch image");
         const blob = await resp.blob();
-        
+
         const rotation = rotationAngles[docId] ?? 0;
         if (rotation === 0) {
           url = URL.createObjectURL(blob);
@@ -159,7 +204,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           const rotatedBlob = await rotateImage(blob, rotation);
           url = URL.createObjectURL(rotatedBlob);
         }
-      }      
+      }
 
       setPopupImageUrl(url);
       setCurrentDocId(docId);
@@ -178,90 +223,105 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     setPopupImageUrl(null);
     setCurrentDocId(null);
     setIsPopupOpen(false);
-  }; 
+  };
   // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
   const saveRotation = async (rotation: number) => {
     if (currentDocId === null) return;
-    console.log("saveRotation : ", rotation, currentDocId);
     setRotationAngles((prev) => ({
       ...prev,
       [currentDocId]: rotation,
     }));
-
   };
 
   const handleUploadFromPopup = (file: File) => {
     const url = URL.createObjectURL(file);
     if (currentDocId !== null) {
-      setPreviewUrls(prev => ({
+      setPreviewUrls((prev) => ({
         ...prev,
-        [currentDocId]: url
+        [currentDocId]: url,
       }));
 
-      setPreviewFiles(prev => ({
+      setPreviewFiles((prev) => ({
         ...prev,
-        [currentDocId]: file
+        [currentDocId]: file,
       }));
     }
   };
 
-  const handleSaveDocument = async (  doc: KycDocument,  rotation: number,  action?: string,  remark?: string) => {
+  const handleSaveDocument = async (
+    doc: KycDocument,
+    rotation: number,
+    action?: string,
+    remark?: string
+  ) => {
+    try {
+      // 1. เตรียมไฟล์สำหรับอัปโหลด
+      let fileToUpload: File;
 
-  try {
-    // 1. เตรียมไฟล์สำหรับอัปโหลด
-    let fileToUpload: File;
-    
-    if (previewFiles[doc.kyc_doc_id]) {
-      // ใช้ไฟล์ที่เลือกใหม่
-      const originalFile = previewFiles[doc.kyc_doc_id];
-      const blob = rotation === 0 ? originalFile : await rotateImage(originalFile, rotation);
-      fileToUpload = new File([blob], originalFile.name, { type: originalFile.type });
-    } else {
-      // ดึงจาก backend
-       const resp = await axios.get(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`, {
-        responseType: 'blob' // สำคัญ! ต้องระบุเป็น blob
-      });      
-      const blob = resp.data;
-      const rotatedBlob = rotation === 0 ? blob : await rotateImage(blob, rotation);
-      fileToUpload = new File([rotatedBlob], `document_${doc.kyc_doc_id}.jpg`, { type: "image/jpeg" });
+      if (previewFiles[doc.kyc_doc_id]) {
+        // ใช้ไฟล์ที่เลือกใหม่
+        const originalFile = previewFiles[doc.kyc_doc_id];
+        const blob =
+          rotation === 0
+            ? originalFile
+            : await rotateImage(originalFile, rotation);
+        fileToUpload = new File([blob], originalFile.name, {
+          type: originalFile.type,
+        });
+      } else {
+        // ดึงจาก backend
+        const resp = await axios.get(
+          `/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`,
+          {
+            responseType: "blob", // สำคัญ! ต้องระบุเป็น blob
+          }
+        );
+        const blob = resp.data;
+        const rotatedBlob =
+          rotation === 0 ? blob : await rotateImage(blob, rotation);
+        fileToUpload = new File(
+          [rotatedBlob],
+          `document_${doc.kyc_doc_id}.jpg`,
+          { type: "image/jpeg" }
+        );
+      }
+
+      // 2. กำหนดค่า action และ remark
+      const finalAction = action || doc.action || "save";
+      const finalRemark = remark || doc.remark || "";
+
+      // 3. สร้าง FormData
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+      formData.append("kyc_doc_id", doc.kyc_doc_id.toString());
+      formData.append("config_id", doc.doctype_id.toString());
+      formData.append("position", doc.position);
+      formData.append("action", finalAction);
+      formData.append("remark", finalRemark);
+
+      // เพิ่ม optional fields
+      if (doc.document_no) formData.append("document_no", doc.document_no);
+       if (doc.issue_country) formData.append("issue_country", doc.issue_country);
+      if (doc.issued_date) formData.append("issued_date", doc.issued_date);
+      if (doc.expired_date) formData.append("expired_date", doc.expired_date);
+      if (doc.ict_mapping_id)
+        formData.append("ict_mapping", doc.ict_mapping_id.toString());
+      if (doc.user_id) formData.append("user_id", doc.user_id.toString());
+      if (doc.status) formData.append("status", doc.status.toString());
+      // 4. อัปโหลดไป API
+      const response = await axios.post("/api/kyc/save-document", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      alert("อัปโหลดเอกสารสำเร็จ");
+      //return response.data;
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("อัปโหลดเอกสารล้มเหลว");
     }
-
-    // 2. กำหนดค่า action และ remark
-    const finalAction = action || doc.action || "save";
-    const finalRemark = remark || doc.remark || "";
-
-    // 3. สร้าง FormData
-    const formData = new FormData();
-    formData.append("file", fileToUpload);
-    formData.append("kyc_doc_id", doc.kyc_doc_id.toString());
-    formData.append("config_id", doc.doctype_id.toString());
-    formData.append("position", doc.position);
-    formData.append("action", finalAction);
-    formData.append("remark", finalRemark);
-  
-
-    // เพิ่ม optional fields
-    if (doc.document_no) formData.append("document_no", doc.document_no);
-    if (doc.issued_date) formData.append("issued_date", doc.issued_date);
-    if (doc.expired_date) formData.append("expired_date", doc.expired_date);
-    if (doc.ict_mapping_id) formData.append("ict_mapping", doc.ict_mapping_id.toString());
-    if (doc.user_id) formData.append("user_id", doc.user_id.toString());
-    if (doc.status) formData.append("status", doc.status.toString());
-    // 4. อัปโหลดไป API
-    const response = await axios.post("/api/kyc/save-document", formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    alert("อัปโหลดเอกสารสำเร็จ");
-    //return response.data;
-    
-  } catch (error) {
-    console.error("Upload failed", error);
-    alert("อัปโหลดเอกสารล้มเหลว");
-  }
-};
+  };
 
   const handleDeleteDocument = (doc: KycDocument) => {
     console.log("Delete", doc);
@@ -279,10 +339,13 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       endDate: newDate,
     });
   };
-  
+
   const mappingNationality = (select: SelectOption | undefined) => {
     if (select) {
-      const rawArray = Object.values(rawNationalityList.current).filter((item): item is CatalogueItem => typeof item === "object" && "id" in item);
+      const rawArray = Object.values(rawNationalityList.current).filter(
+        (item): item is CatalogueItem =>
+          typeof item === "object" && "id" in item
+      );
       const owner = rawArray.find((i) => i.id === select?.value);
       setOwnerNationality(owner);
     } else {
@@ -292,7 +355,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 
   const mappingOccupation = (select: SelectOption | undefined) => {
     if (select) {
-      const rawArray = Object.values(rawOccupationList.current).filter((item): item is CatalogueItem => typeof item === "object" && "id" in item);
+      const rawArray = Object.values(rawOccupationList.current).filter(
+        (item): item is CatalogueItem =>
+          typeof item === "object" && "id" in item
+      );
       const owner = rawArray.find((i) => i.id === select?.value);
       setOwnerOccupation(owner);
     } else {
@@ -301,8 +367,11 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   };
 
   const mappingMonthlyIncomeList = (select: SelectOption | undefined) => {
-     if (select) {
-      const rawArray = Object.values(rawMonthlyIncomeList.current).filter((item): item is CatalogueItem => typeof item === "object" && "id" in item);
+    if (select) {
+      const rawArray = Object.values(rawMonthlyIncomeList.current).filter(
+        (item): item is CatalogueItem =>
+          typeof item === "object" && "id" in item
+      );
       const owner = rawArray.find((i) => i.id === select?.value);
       setOwnerMonthlyIncome(owner);
     } else {
@@ -317,18 +386,350 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     setError("");
 
     //set data to submit
-    console.log("set data to submit")
+    console.log("set data to submit");
     try {
-    // 2. รวบรวมข้อมูลจาก state
-    const customer:CustomerDataRequest = {
+      // 2. รวบรวมข้อมูลจาก state
+      const customer: CustomerDataRequest = {
+        customer_id: customerInfo?.customer_data?.customer.customer_id ?? 0,
+        user_id: customerInfo?.customer_data?.customer.user_id ?? 0,
+        full_name: Fullname,
+        email: Email,
+        mobile_no: MobileNo,
+        nationality: Nationality?.value ? Nationality.value : 147,
+        dob: dob.startDate
+          ? (() => {
+              const date = new Date(dob.startDate);
+              date.setUTCHours(0, 0, 0, 0);
+              return date.toISOString();
+            })()
+          : null,
+        gender: Gender,
+        marital: Marital,
+        residential: Residential,
+        occupation: Occupation?.value ? Number(Occupation.value) : 0,
+        income: MonthlyIncome?.value ? Number(MonthlyIncome.value) : 0,
+        active: true,
+        updated_by: 0,
+        native_name: "",
+        other_occupation:otherOccupation,
+      };
+
+      if(Occupation?.label?.toLowerCase().includes('other')){
+          if(otherOccupation===""){
+            AlertSBD.fire({
+            icon: 'error',
+            titleText: 'Please specify other occupation. ',
+            text: "Error ",
+            showConfirmButton: false
+          });
+            return;
+          }
+      }
+    
+      const original = customerInfo?.customer_data?.customer;
+      if (!original) {
+        console.log("ไม่พบข้อมูลลูกค้าเดิม");
+        setError("ไม่พบข้อมูลลูกค้าเดิม");
+        setLoading(false);
+        return;
+      }
+      let customer_address: CustomerAddressRequest[] = [];
+
+      const contactAddressData: CustomerAddressRequest = {
+        address_type: "contact",
+        address: ContactAddress,
+        sub_district: ContactSubDistrict,
+        city: ContactCity,
+        state: ContactState,
+        zipcode: ContactZipcode,
+        address_id: ContactAddressId,
+        customer_id: customer.customer_id,
+        company_address: "",
+        company_name: "",
+      };
+
+      const workAddressData: CustomerAddressRequest = {
+        address_type: "work",
+        address: "",
+        sub_district: WorkSubDistrict,
+        city: WorkCity,
+        state: WorkState,
+        zipcode: WorkZipcode,
+        address_id: WorkAddressId,
+        customer_id: customer.customer_id,
+        company_address: WorkAddress,
+        company_name: WorkCompanyName,
+      };
+      customer_address.push(contactAddressData);
+      customer_address.push(workAddressData);
+
+      // // 3. ส่งข้อมูลไปที่ API
+      const response = await axios.post("/api/customer/update-customer-info", {
+        customer,
+        customer_address,
+        "kyc_action":"save",
+      });
+
+      console.log("save response : ",response)
+      AlertSBD.fire({
+            icon: "success",
+            titleText: "Successfully!",
+            text: `You have successfully.`,
+            showConfirmButton: false,
+          });
+    } catch (err: any) {
+      // หากเกิดข้อผิดพลาด
+      console.error("บันทึกข้อมูลไม่สำเร็จ:", err);
+
+      const redirectUrl = '&redirect=/login';
+      router.push(`/error?message=${encodeURIComponent("Authentication error ",)}${redirectUrl}`);
+    } finally {
+      // ไม่ว่าจะสำเร็จหรือไม่ ให้หยุดสถานะโหลด
+      setLoading(false);
+    }
+  };
+
+  const addNewDocument = () => {
+    setDocuments((prev) => [
+      ...prev,
+      {
+        kyc_doc_id: 0,
+        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id, // default ถ้ายังไม่มี
+        doc_type: "", // default type
+        document_no: "",
+        position: "",
+        issued_date: null,
+        expired_date: null,
+        document_info: "",
+        url: "",
+        action: "request", // default action
+        user_id: customerInfo?.customer_data.customer.user_id,
+        rotationAngle: 0,
+        doctype_id: 0,
+        ict_mapping_id: 0,
+      } as KycDocument,
+    ]);
+  };
+
+  // เพิ่ม handlers ใหม่ใน CustomerForm component
+  // 1. Handler สำหรับ Approve
+  const handleApproveDocument = async (req: KycDocument) => {
+    console.log("req :", req);
+    try {
+      const response = await axios.post("/api/kyc/set-action-document", {
+        kyc_doc_id: req.kyc_doc_id,
+        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        action: "approve",
+        customer_id: req.user_id,
+        remark: req.remark,
+      });
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.kyc_doc_id === req.kyc_doc_id
+            ? {
+                ...doc,
+                action_status: "Approve",
+                remark: "อนุมัติเอกสาร",
+                active: false,
+                status: "approve",
+              }
+            : doc
+        )
+      );
+      // อัปเดต documents state หรือ refetch
+      alert("อนุมัติเอกสารสำเร็จ");
+      // อาจจะต้อง refetch documents หรือ update state
+    } catch (error) {
+      console.error("Failed to approve document:", error);
+
+      if (axios.isAxiosError(error)) {
+        const errorMessage =
+          error.response?.data?.message || "อนุมัติเอกสารไม่สำเร็จ";
+        alert(errorMessage);
+      } else {
+        alert("อนุมัติเอกสารไม่สำเร็จ");
+      }
+    }
+  };
+
+  // 2. Handler สำหรับ Reject
+  const handleRejectDocument = async (
+    document: KycDocument,
+    reason: string
+  ) => {
+    try {
+      const response = await axios.post("/api/kyc/set-action-document", {
+        kyc_doc_id: document.kyc_doc_id,
+        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        action: "reject",
+        customer_id: document.user_id,
+        remark: reason,
+      });
+
+      // อัปเดต documents state
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.kyc_doc_id === document.kyc_doc_id
+            ? {
+                ...doc,
+                action_status: "Rejected",
+                remark: "ยกเลิกเอกสาร : " + reason,
+                active: false,
+                status: "reject",
+              }
+            : doc
+        )
+      );
+      alert("ปฏิเสธเอกสารสำเร็จ");
+    } catch (error) {
+      console.error("Failed to reject document:", error);
+      alert("ปฏิเสธเอกสารไม่สำเร็จ");
+    }
+  };
+
+  // 3. Handler สำหรับ Inactive
+  const handleInactiveDocument = async (
+    document: KycDocument,
+    reason: string
+  ) => {
+    try {
+      const response = await axios.post("/api/kyc/set-action-document", {
+        kyc_doc_id: document.kyc_doc_id,
+        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        action: "inactive",
+        customer_id: document.user_id,
+        remark: reason,
+      });
+
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.kyc_doc_id === document.kyc_doc_id
+            ? {
+                ...doc,
+                action_status: "Inactive",
+                remark: reason,
+                active: false,
+              }
+            : doc
+        )
+      );
+      alert("ทำให้เอกสารไม่ใช้งานสำเร็จ");
+    } catch (error) {
+      console.error("Failed to inactive document:", error);
+      alert("ทำให้เอกสารไม่ใช้งานไม่สำเร็จ");
+    }
+  };
+
+  // 4. Handler สำหรับ Reactivate
+  const handleReactivateDocument = async (document: KycDocument) => {
+    try {
+      const response = await axios.post("/api/kyc/set-action-document", {
+        kyc_doc_id: document.kyc_doc_id,
+        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        action: "review",
+        customer_id: document.user_id,
+        remark: document.remark,
+      });
+
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.kyc_doc_id === document.kyc_doc_id
+            ? { ...doc, action_status: "Review", remark: null, active: true }
+            : doc
+        )
+      );
+      alert("เปิดใช้งานเอกสารใหม่สำเร็จ");
+    } catch (error) {
+      console.error("Failed to reactivate document:", error);
+      alert("เปิดใช้งานเอกสารใหม่ไม่สำเร็จ");
+    }
+  };
+
+  // 5. Handler สำหรับ Required (ใหม่!)
+  const handleRequiredDocument = async (
+    document: KycDocument,
+    reason: string
+  ) => {
+    console.log("req handleRequiredDocument => ", document);
+    try {
+      const response = await axios.post("/api/kyc/set-action-document", {
+        kyc_id: document.kyc_id,
+        customer_id: document.user_id,
+        doctype_id: document.doctype_id,
+        doc_type: document.doc_type,
+        position: document.position,
+        document_no: document.document_no,
+        document_info: document.document_info,
+        action: "required",
+        ict_mapping_id: document.ict_mapping_id,
+        remark: reason,
+      });
+
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.kyc_doc_id === document.kyc_doc_id
+            ? {
+                ...doc,
+                action_status: "Required",
+                remark: "ขอเอกสารเพิ่มเติม : " + reason,
+                status: "required",
+              }
+            : doc
+        )
+      );
+      alert("ส่งคำขอเอกสารเพิ่มเติมสำเร็จ");
+    } catch (error) {
+      console.error("Failed to required document:", error);
+      alert("ส่งคำขอเอกสารเพิ่มเติมไม่สำเร็จ");
+    }
+  };
+  // 6. Handler สำหรับ Selfe
+  const handleSelfieAction = () => {
+    const selfieDocId = selfeIMG ?? 0;
+
+    // ถ้ามี preview file ใหม่ ให้ save
+    if (previewUrls[selfieDocId]) {
+      // ใช้ Partial เพื่อให้ส่งแค่ fields ที่จำเป็น
+      const selfieDoc: Partial<KycDocument> & Pick<KycDocument, "kyc_doc_id"> =
+        {
+          kyc_doc_id: selfieDocId,
+          kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id ?? 0,
+          user_id: customerInfo?.customer_data.customer.user_id ?? 0,
+          doc_type: "SELFIE",
+          doctype_id: 310,
+          document_info: "Selfie",
+          action: "approve",
+          rotationAngle: rotationAngles[selfieDocId] || 0,
+          position: "FRONT",
+        };
+
+      const rotation = rotationAngles[selfieDocId] || 0;
+      handleSaveDocument(selfieDoc as KycDocument, rotation);
+    } else {
+      // ถ้ายังไม่มีไฟล์ ให้เปิด popup เพื่อ upload
+      openPopup(selfieDocId);
+    }
+  };
+
+  const handleApproveCustomer = async () => {
+    console.log("customer info", customerInfo);
+    // set up document
+    try{
+
+    const customer: CustomerDataRequest = {
       customer_id: customerInfo?.customer_data?.customer.customer_id ?? 0,
       user_id: customerInfo?.customer_data?.customer.user_id ?? 0,
       full_name: Fullname,
       email: Email,
       mobile_no: MobileNo,
       nationality: Nationality?.value ? Nationality.value : 147,
-      dob: dob.startDate   ? (() => { const date = new Date(dob.startDate);date.setUTCHours(0, 0, 0, 0);return date.toISOString();})()
-  : null,
+      dob: dob.startDate
+        ? (() => {
+            const date = new Date(dob.startDate);
+            date.setUTCHours(0, 0, 0, 0);
+            return date.toISOString();
+          })()
+        : null,
       gender: Gender,
       marital: Marital,
       residential: Residential,
@@ -336,19 +737,32 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       income: MonthlyIncome?.value ? Number(MonthlyIncome.value) : 0,
       active: true,
       updated_by: 0,
-      native_name: ""
+      native_name: "",
+      other_occupation:otherOccupation,
     };
-    
+
+    if(Occupation?.label?.toLowerCase().includes('other')){
+          if(otherOccupation===""){
+            AlertSBD.fire({
+            icon: 'error',
+            titleText: 'Please specify other occupation. ',
+            text: "Error ",
+            showConfirmButton: false
+          });
+            return;
+          }
+      }
+
     const original = customerInfo?.customer_data?.customer;
     if (!original) {
-       console.log("ไม่พบข้อมูลลูกค้าเดิม")
+      console.log("ไม่พบข้อมูลลูกค้าเดิม");
       setError("ไม่พบข้อมูลลูกค้าเดิม");
       setLoading(false);
       return;
     }
     let customer_address: CustomerAddressRequest[] = [];
 
-    const contactAddressData:CustomerAddressRequest = {
+    const contactAddressData: CustomerAddressRequest = {
       address_type: "contact",
       address: ContactAddress,
       sub_district: ContactSubDistrict,
@@ -358,10 +772,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       address_id: ContactAddressId,
       customer_id: customer.customer_id,
       company_address: "",
-      company_name:""
+      company_name: "",
     };
-   
-    const workAddressData:CustomerAddressRequest = {
+
+    const workAddressData: CustomerAddressRequest = {
       address_type: "work",
       address: "",
       sub_district: WorkSubDistrict,
@@ -371,218 +785,47 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       address_id: WorkAddressId,
       customer_id: customer.customer_id,
       company_address: WorkAddress,
-      company_name: WorkCompanyName
+      company_name: WorkCompanyName,
     };
-      customer_address.push( contactAddressData);
-      customer_address.push( workAddressData);
-  
+    customer_address.push(contactAddressData);
+    customer_address.push(workAddressData);
 
-   
-    // // 3. ส่งข้อมูลไปที่ API
-    const response = await axios.post("/api/customer/update-customer-info", {customer , customer_address});
-
-    // console.log("บันทึกข้อมูลสำเร็จ:", response.data);
-
-    // // หลังจากบันทึกสำเร็จ อาจจะเปลี่ยนเส้นทาง หรือแสดงข้อความสำเร็จ
-    // router.push("/success-page");
-
-  } catch (err: any) {
-    // หากเกิดข้อผิดพลาด
-    console.error("บันทึกข้อมูลไม่สำเร็จ:", err);
-    setError("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
-    
-  } finally {
-    // ไม่ว่าจะสำเร็จหรือไม่ ให้หยุดสถานะโหลด
-    setLoading(false);
-  }
-  };
-  
-  const addNewDocument = () => {
-  setDocuments(prev => [
-    ...prev,
-    {
-      kyc_doc_id: 0,      
-      kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,            // default ถ้ายังไม่มี
-      doc_type: "",          // default type
-      document_no: "",
-      position: "",
-      issued_date: null,
-      expired_date: null,
-      document_info: "",
-      url: "",
-      action: "request",       // default action
-      user_id: customerInfo?.customer_data.customer.user_id,
-      rotationAngle: 0,
-      doctype_id: 0,
-      ict_mapping_id: 0,
-    } as KycDocument
-  ]);
-};
-
-// เพิ่ม handlers ใหม่ใน CustomerForm component
-// 1. Handler สำหรับ Approve
-const handleApproveDocument = async ( doc: KycDocument) => {
-  try {
-    const response = await axios.post('/api/kyc/set-action-document', {
-      kyc_doc_id: doc.kyc_doc_id,
-      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
-      action:"approve",
-      customer_id:doc.user_id,
-      remark:doc.remark,
-    });
-    
-      setDocuments(prev => prev.map(doc => 
-        doc.kyc_doc_id === doc.kyc_doc_id 
-          ? { ...doc, action_status: 'Rejected', remark: "อนุมัติเอกสาร", active: false }
-          : doc
-      ));
-
-    // อัปเดต documents state หรือ refetch
-    alert('อนุมัติเอกสารสำเร็จ');
-    // อาจจะต้อง refetch documents หรือ update state
-    
-  } catch (error) {
-    console.error('Failed to approve document:', error);
-    
-    if (axios.isAxiosError(error)) {
-      const errorMessage = error.response?.data?.message || 'อนุมัติเอกสารไม่สำเร็จ';
-      alert(errorMessage);
-    } else {
-      alert('อนุมัติเอกสารไม่สำเร็จ');
+    const allApproved = documents.every((doc) => doc.status === "approve");
+    if(!allApproved){
+      console.log("เอกสารยังอนุมัติไม่เรียบร้อย");
+      //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
+      alert("เอกสารยังอนุมัติไม่เรียบร้อย");
+      setLoading(false);
+      return;
     }
-  }
-};
 
-// 2. Handler สำหรับ Reject
-const handleRejectDocument = async (document: KycDocument, reason: string) => {
-  try {
-    const response = await axios.post('/api/kyc/set-action-document', {
-      kyc_doc_id: document.kyc_doc_id,
-      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
-      action:"reject",
-      customer_id:document.user_id,
-      remark:reason,
-    });
-    
-      // อัปเดต documents state
-      setDocuments(prev => prev.map(doc => 
-        doc.kyc_doc_id === document.kyc_doc_id 
-          ? { ...doc, action_status: 'Rejected', remark: "ยกเลิกเอกสาร : "+reason, active: false }
-          : doc
-      ));
-      alert('ปฏิเสธเอกสารสำเร็จ');
-    
-  } catch (error) {
-    console.error('Failed to reject document:', error);
-    alert('ปฏิเสธเอกสารไม่สำเร็จ');
-  }
-};
+      const response = await axios.post("/api/customer/update-customer-info", {
+        customer,
+        customer_address,
+        "kyc_action":"approve",
+      });
 
-// 3. Handler สำหรับ Inactive
-const handleInactiveDocument = async (document: KycDocument, reason: string) => {
-  try {
-    const response = await axios.post('/api/kyc/set-action-document', {
-      kyc_doc_id: document.kyc_doc_id,
-      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
-      action:"inactive",
-      customer_id:document.user_id,
-       remark:reason,
-    });
-    
-    
-      setDocuments(prev => prev.map(doc => 
-        doc.kyc_doc_id === document.kyc_doc_id 
-          ? { ...doc, action_status: 'Inactive', remark: reason, active: false }
-          : doc
-      ));
-      alert('ทำให้เอกสารไม่ใช้งานสำเร็จ');
-    
-  } catch (error) {
-    console.error('Failed to inactive document:', error);
-    alert('ทำให้เอกสารไม่ใช้งานไม่สำเร็จ');
-  }
-};
+      AlertSBD.fire({
+            icon: "success",
+            titleText: "Successfully!",
+            text: `Approe customer information`,
+            showConfirmButton: false,
+          }).then(() => {
+            router.replace("/customer");
+          });
+          return;
 
-// 4. Handler สำหรับ Reactivate
-const handleReactivateDocument = async (document: KycDocument) => {
-  try {
-     const response = await axios.post('/api/kyc/set-action-document', {
-      kyc_doc_id: document.kyc_doc_id,
-      kyc_id:customerInfo?.kyc_data.kyc_data.kyc_id,
-      action:"review",
-      customer_id:document.user_id,
-      remark:document.remark,
-    });
-    
-      setDocuments(prev => prev.map(doc => 
-        doc.kyc_doc_id === document.kyc_doc_id 
-          ? { ...doc, action_status: 'Review', remark: null, active: true }
-          : doc
-      ));
-      alert('เปิดใช้งานเอกสารใหม่สำเร็จ');
-    
-  } catch (error) {
-    console.error('Failed to reactivate document:', error);
-    alert('เปิดใช้งานเอกสารใหม่ไม่สำเร็จ');
-  }
-};
+    } catch (err: any) {
+      // หากเกิดข้อผิดพลาด
+      console.error("บันทึกข้อมูลไม่สำเร็จ:", err);
 
-// 5. Handler สำหรับ Required (ใหม่!)
-const handleRequiredDocument = async (document: KycDocument, reason: string) => {
-  console.log("req handleRequiredDocument => ", document)
-  try {
-    const response = await axios.post('/api/kyc/set-action-document', {
-      kyc_id: document.kyc_id,
-      customer_id: document.user_id,
-      doctype_id: document.doctype_id,
-      doc_type: document.doc_type,
-      position: document.position,
-      document_no: document.document_no,
-      document_info: document.document_info,
-      action: "required",
-      ict_mapping_id: document.ict_mapping_id,
-      remark: reason
-    });
-      
-      setDocuments(prev => prev.map(doc => 
-        doc.kyc_doc_id === document.kyc_doc_id 
-          ? { ...doc, action_status: 'Required', remark: "ขอเอกสารเพิ่มเติม : " + reason}
-          : doc
-      ));
-      alert('ส่งคำขอเอกสารเพิ่มเติมสำเร็จ');
- 
-  } catch (error) {
-    console.error('Failed to required document:', error);
-    alert('ส่งคำขอเอกสารเพิ่มเติมไม่สำเร็จ');
-  }
-};
-// 6. Handler สำหรับ Selfe
-const handleSelfieAction = () => {
-  const selfieDocId = selfeIMG ?? 0;
-  
-  // ถ้ามี preview file ใหม่ ให้ save
-  if (previewUrls[selfieDocId]) {
-    // ใช้ Partial เพื่อให้ส่งแค่ fields ที่จำเป็น
-    const selfieDoc: Partial<KycDocument> & Pick<KycDocument, 'kyc_doc_id'> = {
-      kyc_doc_id: selfieDocId,
-      kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id ?? 0,
-      user_id: customerInfo?.customer_data.customer.user_id ?? 0,
-      doc_type: "SELFIE",
-      doctype_id:310,
-      document_info: "Selfie",
-      action: "approve",
-      rotationAngle: rotationAngles[selfieDocId] || 0,
-      position: "FRONT"
-    };
-    
-    const rotation = rotationAngles[selfieDocId] || 0;
-    handleSaveDocument(selfieDoc as KycDocument, rotation);
-  } else {
-    // ถ้ายังไม่มีไฟล์ ให้เปิด popup เพื่อ upload
-    openPopup(selfieDocId);
-  }
-};
-
+      const redirectUrl = '&redirect=/login';
+      router.push(`/error?message=${encodeURIComponent("Authentication error ",)}${redirectUrl}`);
+    } finally {
+      // ไม่ว่าจะสำเร็จหรือไม่ ให้หยุดสถานะโหลด
+      setLoading(false);
+    }
+  };
   useEffect(() => {
     const getLoadData = async () => {
       try {
@@ -632,8 +875,7 @@ const handleSelfieAction = () => {
 
         const OccupationSelected = mapOccupation.find(
           (i: SelectOption) =>
-            i.value ===
-            customerInfo?.customer_data?.customer?.occupation
+            i.value === customerInfo?.customer_data?.customer?.occupation
         );
 
         setOccupationList(mapOccupation);
@@ -658,7 +900,6 @@ const handleSelfieAction = () => {
         setLoadingOwnerNationality(false);
         setloadingOwnerOccupation(false);
         setLoadingOwnerMonthlyIncome(false);
-
       } catch (err: any) {
         console.log("catch err : ", err);
       } finally {
@@ -672,9 +913,11 @@ const handleSelfieAction = () => {
   }, []);
 
   useEffect(() => {
-    const selfieDoc = customerInfo?.kyc_data.kyc_documents?.find((d) => d.document_info === "Selfie");
+    const selfieDoc = customerInfo?.kyc_data.kyc_documents?.find(
+      (d) => d.document_info === "Selfie"
+    );
     setSelfieIMG(selfieDoc?.kyc_doc_id ?? null);
-    setSelfieDOC(selfieDoc)
+    setSelfieDOC(selfieDoc);
   }, []);
 
   return (
@@ -723,12 +966,6 @@ const handleSelfieAction = () => {
                 </div>
               )}
             </div>
-            <button
-              className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs"
-              onClick={() => handleSelfieAction()}
-            >
-              {previewUrls[selfeIMG ?? 0] ? "Save" : "Upload"}
-            </button>
           </div>
           <div className=" rounded-md p-4">
             <div className="flex">
@@ -799,367 +1036,410 @@ const handleSelfieAction = () => {
               <label className="block text-sm font-medium text-gray-600 mb-1 mr-2">
                 Operation Approve by :
               </label>
-              <p className="text-gray-900 text-sm mb-1 mr-2">{`${kyc?.operation_approve_by} `}</p>
+              <p className="text-gray-900 text-sm mb-1 mr-2">
+                {kyc?.operation_approve_by === 0
+                  ? ""
+                  : (kyc?.operation_approve_by ?? "")}
+              </p>
             </div>
             <div className="flex items-baseline">
               <label className="block text-sm font-medium text-gray-600 mb-1 mr-2">
                 Operation Approve Date :
               </label>
-              <p className="text-gray-900 text-sm mb-1 mr-2">{`${kyc?.operation_approve_at} `}</p>
+              <p className="text-gray-900 text-sm mb-1 mr-2">{`${kyc?.operation_approve_at ?? ""} `}</p>
             </div>
 
             <div className="flex items-baseline">
               <label className="block text-sm font-medium text-gray-600 mb-1 mr-2">
                 KYC Approve Date :
               </label>
-              <p className="text-gray-900 text-sm mb-1 mr-2">{`${kyc?.ict_approve_at} `}</p>
+              <p className="text-gray-900 text-sm mb-1 mr-2">{`${kyc?.ict_approve_at ?? ""} `}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <form onSubmit={submitButtonHandler} id="customerForm">
-        <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
-          <div className="flex items-center mb-4">
-            <BookUser className="w-5 h-5 text-green-600 mr-2" />
-            <h2 className="text-xl font-semibold text-gray-800">
-              Personal Detail
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-            <InputCustom
-              name="Frist Name"
-              title="Frist Name"
-              type="text"
-              placeholder="frist name"
-              value={Fullname}
-              onChange={(e) => setFullname(e.target.value)}
-              required
-            />
+   <form onSubmit={submitButtonHandler} id="customerForm">
+  <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
+    <div className="flex items-center mb-4">
+      <BookUser className="w-5 h-5 text-green-600 mr-2" />
+      <h2 className="text-xl font-semibold text-gray-800">
+        Personal Detail
+      </h2>
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+      <InputCustom
+        name="Frist Name"
+        title="Frist Name"
+        type="text"
+        placeholder="frist name"
+        value={Fullname}
+        onChange={(e) => setFullname(e.target.value)}
+        required
+      />
 
-            <InputCustom
-              name="Mobile Name"
-              title="Mobile Name"
-              type="text"
-              placeholder="mobile name"
-              value={MobileNo}
-              onChange={(e) => setMobileNo(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="Email"
-              title="Email Name"
-              type="text"
-              placeholder="email"
-              value={Email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+      <InputCustom
+        name="Mobile No"
+        title="Mobile No"
+        type="text"
+        placeholder="mobile no"
+        value={MobileNo}
+        onChange={(e) => setMobileNo(e.target.value)}              
+        readOnly
+        disabled={true}
+      />
+      <InputCustom
+        name="Email"
+        title="Email"
+        type="text"
+        placeholder="email"
+        value={Email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+      />
 
-            <div className="flex flex-col md:flex-row mt-4">
-              <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-xs">DOB</div>
-              <div className="date-box rounded-md relative w-full border border-[--border-color] py force-light-background">
-                <Datepicker
-                  useRange={false}
-                  asSingle={true}
-                  displayFormat={"DD/MM/YYYY"}
-                  placeholder="DOB"
-                  inputClassName="rounded-md min-h-[42px] text-[--text-all] ss:text-[12px] xs:text-sm placeholder:pl-0  w-full"
-                  value={dob}
-                  onChange={(e) => handleChangeStartDate(e!.startDate)}
-                  toggleIcon={() => false}
-                  inputId="start_date"
-                />
-                <label
-                  className="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer"
-                  htmlFor="start_date"
-                >
-                  <IconCalendar className="text-[20px]" />
-                </label>
-              </div>
-            </div>
-            <div className="flex flex-col md:flex-row mt-4">
-              <div className="mb-2 md:mb-0 md:mr-3  mt-3 text-sm ml-1">
-                Gender
-              </div>
-              <label className="label justify-start cursor-pointer">
-                <input
-                  type="radio"
-                  name="gender"
-                  className="radio checked:bg-primary"
-                  value={Gender}
-                  checked={Gender === "M"}
-                  onChange={() => setGender("M")}
-                />
-                <span className="label-text ml-2">Male</span>
-              </label>
-              <label className="label justify-start cursor-pointer ml-4">
-                <input
-                  type="radio"
-                  name="gender"
-                  className="radio checked:bg-primary"
-                  value={Gender}
-                  checked={Gender === "F"}
-                  onChange={() => setGender("F")}
-                />
-                <span className="label-text ml-2">Female</span>
-              </label>
-            </div>
-            <div className="flex flex-col md:flex-row mt-4">
-              <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-sm ml-1">
-                Marital
-              </div>
-              <label className="label justify-start cursor-pointer">
-                <input
-                  type="radio"
-                  name="marital"
-                  className="radio checked:bg-primary"
-                  value={Marital}
-                  checked={Marital === "M"}
-                  onChange={() => setMarital("M")}
-                />
-                <span className="label-text ml-2">Yes</span>
-              </label>
-              <label className="label justify-start cursor-pointer ml-4">
-                <input
-                  type="radio"
-                  name="marital"
-                  className="radio checked:bg-primary"
-                  value={Marital}
-                  checked={Marital === "S"}
-                  onChange={() => setMarital("S")}
-                />
-                <span className="label-text ml-2">No</span>
-              </label>
-            </div>
-
-            <div className="flex flex-col ">
-              {" "}
-              {/* Modified to flex-col */}
-              <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
-                Nationality
-              </div>
-              <div className="rounded-md relative w-full force-light-background">
-                {" "}
-                {/* Removed date-box */}
-                <Select
-                  classNamePrefix="select-custom"
-                  instanceId="Nationality"
-                  placeholder="Nationality"
-                  options={NationalityList}
-                  defaultValue={Nationality}
-                  value={Nationality}
-                  onChange={(item) => {
-                    setNationality(item as SelectOption);
-                    mappingNationality(item as SelectOption);
-                  }}
-                  isLoading={LoadingOwnerNationality}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col ">
-              <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
-                Occupation
-              </div>
-              <div className="rounded-md relative w-full force-light-background">
-                <Select
-                  classNamePrefix="select-custom"
-                  instanceId="Occupation"
-                  placeholder="Occupation"
-                  options={OccupationList}
-                  defaultValue={Occupation}
-                  value={Occupation}
-                  onChange={(item) => {
-                    setOccupation(item as SelectOption);
-                    mappingOccupation(item as SelectOption);
-                  }}
-                  isLoading={LoadingOwnerOccupation}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col ">
-              <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">Income</div>
-              <div className="rounded-md relative w-full force-light-background">
-                <Select
-                  classNamePrefix="select-custom"
-                  instanceId="MonthlyIncome"
-                  placeholder="MonthlyIncome"
-                  options={MonthlyIncomeList}
-                  defaultValue={MonthlyIncome}
-                  value={MonthlyIncome}
-                  onChange={(item) => {
-                    setMonthlyIncome(item as SelectOption);
-                    mappingMonthlyIncomeList(item as SelectOption);
-                  }}
-                  isLoading={LoadingOwnerMonthlyIncome}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col ">
-              <InputCustom
-                name="residential"
-                title="Resident Type"
-                type="text"
-                placeholder="residential"
-                value={Residential}
-                onChange={(e) => setResidential(e.target.value)}
-                required
-              />
-            </div>
-            <InputCustom
-              name="KYC level"
-              title="KYC Level"
-              type="text"
-              placeholder="kyc level"
-              value={KycLevel}
-              readOnly
-              disabled={true}
-              onChange={(e) => setKycLevel(e.target.value)}
-            />
-            <InputCustom
-              name="Kyc score"
-              title="Kyc Score"
-              type="text"
-              placeholder="Kyc Score"
-              readOnly
-              disabled={true}
-              value={KycScore}
-              onChange={(e) => setKycScore(e.target.value)}
-            />
-            <InputCustom
-              name="Kyc risk status"
-              title="Kyc risk status"
-              type="text"
-              placeholder="Kyc risk status"
-              readOnly
-              disabled={true}
-              value={KycRiskStatus}
-              onChange={(e) => setKycRiskStatus(e.target.value)}
-            />
-          </div>
+      <div className="flex flex-col md:flex-row mt-4">
+        <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-xs">DOB</div>
+        <div className="date-box rounded-md relative w-full border border-[--border-color] py force-light-background">
+          <Datepicker
+            useRange={false}
+            asSingle={true}
+            displayFormat={"DD/MM/YYYY"}
+            placeholder="DOB"
+            inputClassName="rounded-md min-h-[42px] text-[--text-all] ss:text-[12px] xs:text-sm placeholder:pl-0  w-full"
+            value={dob}
+            onChange={(e) => handleChangeStartDate(e!.startDate)}
+            toggleIcon={() => false}
+            inputId="start_date"
+          />
+          <label
+            className="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer"
+            htmlFor="start_date"
+          >
+            <IconCalendar className="text-[20px]" />
+          </label>
         </div>
-
-        <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
-          <div className="flex items-center mb-4">
-            <MapPin className="w-5 h-5 text-green-600 mr-2" />
-            <h2 className="text-xl font-semibold text-gray-800">
-              Address Information
-            </h2>
-          </div>
-          <div className="flex items-center justify-between text-lg ">
-            <div>Word Detail</div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-            <InputCustom
-              name="Company Name"
-              title="company Name"
-              type="text"
-              placeholder="company name"
-              value={WorkCompanyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="Address"
-              title="Address"
-              type="text"
-              placeholder="Address"
-              value={WorkAddress}
-              onChange={(e) => setWorkAddress(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="SubDistrict"
-              title="SubDistrict"
-              type="text"
-              placeholder="SubDistrict"
-              value={WorkSubDistrict}
-              onChange={(e) => setWorkSubDistrict(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="City"
-              title="City"
-              type="text"
-              placeholder="City"
-              value={WorkCity}
-              onChange={(e) => setWorkCity(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="State"
-              title="State"
-              type="text"
-              placeholder="State"
-              value={WorkState}
-              onChange={(e) => setWorkState(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="Zipcode"
-              title="Zipcode"
-              type="text"
-              placeholder="Zipcode"
-              value={WorkZipcode}
-              onChange={(e) => setWorkZipcode(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-lg">
-            <div>Contact Detail</div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-            <InputCustom
-              name="Address"
-              title="Address"
-              type="text"
-              placeholder="Address"
-              value={ContactAddress}
-              onChange={(e) => setContactAddress(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="SubDistrict"
-              title="SubDistrict"
-              type="text"
-              placeholder="SubDistrict"
-              value={ContactSubDistrict}
-              onChange={(e) => setContactSubDistrict(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="City"
-              title="City"
-              type="text"
-              placeholder="City"
-              value={ContactCity}
-              onChange={(e) => setContactCity(e.target.value)}
-              required
-            />
-            <InputCustom
-              name="State"
-              title="State"
-              type="text"
-              placeholder="State"
-              value={ContactState}
-              onChange={(e) => setContactState(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-            <InputCustom
-              name="Zipcode"
-              title="Zipcode"
-              type="text"
-              placeholder="Zipcode"
-              value={ContactZipcode}
-              onChange={(e) => setContactZipcode(e.target.value)}
-              required
-            />
-          </div>
+      </div>
+      <div className="flex flex-col md:flex-row mt-4">
+        <div className="mb-2 md:mb-0 md:mr-3  mt-3 text-sm ml-1">
+          Gender
         </div>
-      </form>
+        <label className="label justify-start cursor-pointer">
+          <input
+            type="radio"
+            name="gender"
+            className="radio checked:bg-primary"
+            value={Gender}
+            checked={Gender === "M"}
+            onChange={() => setGender("M")}
+          />
+          <span className="label-text ml-2">Male</span>
+        </label>
+        <label className="label justify-start cursor-pointer ml-4">
+          <input
+            type="radio"
+            name="gender"
+            className="radio checked:bg-primary"
+            value={Gender}
+            checked={Gender === "F"}
+            onChange={() => setGender("F")}
+          />
+          <span className="label-text ml-2">Female</span>
+        </label>
+      </div>
+      <div className="flex flex-col md:flex-row mt-4">
+        <div className="mb-2 md:mb-0 md:mr-4  mt-3 text-sm ml-1">
+          Marital
+        </div>
+        <label className="label justify-start cursor-pointer">
+          <input
+            type="radio"
+            name="marital"
+            className="radio checked:bg-primary"
+            value={Marital}
+            checked={Marital === "M"}
+            onChange={() => setMarital("M")}
+          />
+          <span className="label-text ml-2">Yes</span>
+        </label>
+        <label className="label justify-start cursor-pointer ml-4">
+          <input
+            type="radio"
+            name="marital"
+            className="radio checked:bg-primary"
+            value={Marital}
+            checked={Marital === "S"}
+            onChange={() => setMarital("S")}
+          />
+          <span className="label-text ml-2">No</span>
+        </label>
+      </div>
+
+      <div className="flex flex-col ">
+        {" "}
+        {/* Modified to flex-col */}
+        <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
+          Nationality
+        </div>
+        <div className="rounded-md relative w-full force-light-background">
+          {" "}
+          {/* Removed date-box */}
+          <Select
+            classNamePrefix="select-custom"
+            instanceId="Nationality"
+            placeholder="Nationality"
+            options={NationalityList}
+            defaultValue={Nationality}
+            value={Nationality}
+            onChange={(item) => {
+              setNationality(item as SelectOption);
+              mappingNationality(item as SelectOption);
+            }}
+            isLoading={LoadingOwnerNationality}
+          />
+        </div>
+      </div>
+      
+      {/* Updated Occupation Section */}
+      <div className="flex flex-col ">
+        <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
+          Occupation
+        </div>
+        <div className="rounded-md relative w-full force-light-background">
+          <Select
+            classNamePrefix="select-custom"
+            instanceId="Occupation"
+            placeholder="Occupation"
+            options={OccupationList}
+            defaultValue={Occupation}
+            value={Occupation}
+            onChange={(item) => {
+              setOccupation(item as SelectOption);
+              mappingOccupation(item as SelectOption);
+              // ถ้าไม่ใช่ Other ให้ clear otherOccupation
+               const isOther = item?.label?.toLowerCase().includes('other');
+              console.log("Is Other:", isOther);
+              console.log("item?.label?.toLowerCase() :", item?.label?.toLowerCase());
+              if (!isOther) {
+                setOtherOccupation("");
+              }
+            }}
+            isLoading={LoadingOwnerOccupation}
+          />
+        </div>
+      </div>
+
+      {/* Other Occupation Field - เพิ่มใหม่ */}
+      {(Occupation?.label?.toLowerCase().includes('other')) && (
+        <div className="flex flex-col mt-3">
+          <InputCustom
+            name="otherOccupation"
+            title="Other Occupation"
+            type="text"
+            placeholder="Please specify your occupation"
+            value={otherOccupation}
+            onChange={(e) => setOtherOccupation(e.target.value)}            
+          />
+        </div>
+      )}
+
+      <div className="flex flex-col ">
+        <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">Income</div>
+        <div className="rounded-md relative w-full force-light-background">
+          <Select
+            classNamePrefix="select-custom"
+            instanceId="MonthlyIncome"
+            placeholder="MonthlyIncome"
+            options={MonthlyIncomeList}
+            defaultValue={MonthlyIncome}
+            value={MonthlyIncome}
+            onChange={(item) => {
+              setMonthlyIncome(item as SelectOption);
+              mappingMonthlyIncomeList(item as SelectOption);
+            }}
+            isLoading={LoadingOwnerMonthlyIncome}
+          />
+        </div>
+      </div>
+      <div className="flex flex-col ">
+        <InputCustom
+          name="residential"
+          title="Resident Type"
+          type="text"
+          placeholder="residential"
+          value={Residential}
+          onChange={(e) => setResidential(e.target.value)}
+          required
+        />
+      </div>
+      <InputCustom
+        name="KYC level"
+        title="KYC Level"
+        type="text"
+        placeholder="kyc level"
+        value={KycLevel}
+        readOnly
+        disabled={true}
+        onChange={(e) => setKycLevel(e.target.value)}
+      />
+      <InputCustom
+        name="Kyc score"
+        title="Kyc Score"
+        type="text"
+        placeholder="Kyc Score"
+        readOnly
+        disabled={true}
+        value={KycScore}
+        onChange={(e) => setKycScore(e.target.value)}
+      />
+      <InputCustom
+        name="Kyc risk status"
+        title="Kyc risk status"
+        type="text"
+        placeholder="Kyc risk status"
+        readOnly
+        disabled={true}
+        value={KycRiskStatus}
+        onChange={(e) => setKycRiskStatus(e.target.value)}
+      />
+    </div>
+  </div>
+
+  <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
+    <div className="flex items-center mb-4">
+      <MapPin className="w-5 h-5 text-green-600 mr-2" />
+      <h2 className="text-xl font-semibold text-gray-800">
+        Address Information
+      </h2>
+    </div>
+    <div className="flex items-center justify-between text-lg ">
+      <div>Work Detail</div>
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+      <InputCustom
+        name="Company Name"
+        title="company Name"
+        type="text"
+        placeholder="company name"
+        value={WorkCompanyName}
+        onChange={(e) => setCompanyName(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="Address"
+        title="Address"
+        type="text"
+        placeholder="Address"
+        value={WorkAddress}
+        onChange={(e) => setWorkAddress(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="SubDistrict"
+        title="SubDistrict"
+        type="text"
+        placeholder="SubDistrict"
+        value={WorkSubDistrict}
+        onChange={(e) => setWorkSubDistrict(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="City"
+        title="City"
+        type="text"
+        placeholder="City"
+        value={WorkCity}
+        onChange={(e) => setWorkCity(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="State"
+        title="State"
+        type="text"
+        placeholder="State"
+        value={WorkState}
+        onChange={(e) => setWorkState(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="Zipcode"
+        title="Zipcode"
+        type="text"
+        placeholder="Zipcode"
+        value={WorkZipcode}
+        onChange={(e) => setWorkZipcode(e.target.value)}
+        required
+      />
+    </div>
+
+    <div className="flex items-center justify-between text-lg">
+      <div>Contact Detail</div>
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+      <InputCustom
+        name="Address"
+        title="Address"
+        type="text"
+        placeholder="Address"
+        value={ContactAddress}
+        onChange={(e) => setContactAddress(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="SubDistrict"
+        title="SubDistrict"
+        type="text"
+        placeholder="SubDistrict"
+        value={ContactSubDistrict}
+        onChange={(e) => setContactSubDistrict(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="City"
+        title="City"
+        type="text"
+        placeholder="City"
+        value={ContactCity}
+        onChange={(e) => setContactCity(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="State"
+        title="State"
+        type="text"
+        placeholder="State"
+        value={ContactState}
+        onChange={(e) => setContactState(e.target.value)}
+        required
+      />
+      <InputCustom
+        name="Zipcode"
+        title="Zipcode"
+        type="text"
+        placeholder="Zipcode"
+        value={ContactZipcode}
+        onChange={(e) => setContactZipcode(e.target.value)}
+        required
+      />
+    </div>
+  </div>
+</form>
+
+      <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
+        {error !== "" ? (
+          <p className="text-error text-center text-[16px]">{error}</p>
+        ) : null}
+        <div className="flex gap-4 items-center justify-end">
+          <ButtonFill
+            className="btn btn-primary btn-sm p-3 min-h-[38px]"
+            type="submit"
+            form="customerForm"
+          >
+            {"Save Customer info"}
+            {loading && <span className="ml-1 loading loading-spinner"></span>}
+          </ButtonFill>
+        </div>
+      </div>
 
       <DocumentTable
         documents={documents}
@@ -1188,26 +1468,16 @@ const handleSelfieAction = () => {
           <ButtonOutline
             className="btn btn-sm p-3 min-h-[38px] border-[--border-color] !text-gray-400 hover:!bg-opacity-10  hover:!border-[--border-color]"
             type="button"
-            onClick={() => router.back()}
+            onClick={handleApproveCustomer}
           >
             Cancel
           </ButtonOutline>
-
-          <ButtonFill
-            className="btn btn-primary btn-sm p-3 min-h-[38px]"
-            type="submit"
-            form="customerForm"
-          >
-            {"Save"}
-            {loading && <span className="ml-1 loading loading-spinner"></span>}
-          </ButtonFill>
-
           <ButtonFill
             className="btn btn-secondary btn-sm p-3 min-h-[38px]"
-            type="submit"
-            form="customerForm"
+            type="button"
+            onClick={handleApproveCustomer}
           >
-            {"Submit"}
+            {"Approve"}
             {loading && <span className="ml-1 loading loading-spinner"></span>}
           </ButtonFill>
         </div>

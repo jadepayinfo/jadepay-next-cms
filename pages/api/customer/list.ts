@@ -14,15 +14,13 @@ export default async function handler(
     }
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
-    console.log(`api /api/v1/customer/get-list?${params}`)
-    const response = await Backend.get(`/api/v1/customer/get-list`, { headers  });
-    console.log("🚀 ~ file: list.ts:20 ~ response:", response)
+    const response = await Backend.get(`/api/v1/customer/get-list`, { headers , params });   
     res.json({ success: true, ...response.data.data })
 
 
   } catch (error: any) {
     console.log('error', error);
-    console.log('api/customer/list', error);
+    console.log('/api/v1/customer/get-list', error);
     res
       .status(500)
       .send({

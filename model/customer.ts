@@ -19,6 +19,7 @@ export interface Customer {
   occupation_th_desc: string;
   occupation_en_desc: string;
   occupation_mm_desc: string;
+  other_occupation: string;
   occupation_ict: string;
   visa_type: string;
   income: number;
@@ -84,6 +85,7 @@ export interface CustomerDataRequest  {
   marital: string;
   residential: string;
   occupation: number;
+  other_occupation: string;
   income: number;
   active: boolean;   
   updated_by: number;
