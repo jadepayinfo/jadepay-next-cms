@@ -8,7 +8,7 @@ import {
   IconCloseOutline,
   IconEdit,
   IconFilter,
-  IconSearch
+  IconSearch,
 } from "@/components/icon";
 import InputCustom from "@/components/input/input";
 import Datepicker, { DateRangeType } from "react-tailwindcss-datepicker";
@@ -21,13 +21,14 @@ import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
 import Pagination from "@/components/share/pagination";
 import { Download, Upload, FileText, X, RefreshCw } from "lucide-react";
+import ExcelJS from "exceljs"; // import exceljs
+import AlertSBD from "@/components/share/modal/alert_sbd";
 
 dayjs.extend(utc);
 
 interface Props {}
 
 const CustomerPage: NextPage<Props> = (props) => {
-  const router = useRouter();
   const limit = 10;
 
   const initDateRange = () => {
@@ -40,6 +41,7 @@ const CustomerPage: NextPage<Props> = (props) => {
   const [filterUsername, setFilterUsername] = useState<string>("");
   const [filterName, setFilterName] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRangeType>(initDateRange());
+  const [source, setSource] = useState("");
 
   // Table states
   const [isFillForm, setIsFillForm] = useState(false);
@@ -47,6 +49,15 @@ const CustomerPage: NextPage<Props> = (props) => {
   const [count, setCount] = useState<number>(0);
   const refPage = useRef(1);
   const [data, setData] = useState<Customer[]>([]);
+  // check bok
+  const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
+  const handleCheckboxChange = (customerId: number, isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedCustomers([...selectedCustomers, customerId]);
+    } else {
+      setSelectedCustomers(selectedCustomers.filter((id) => id !== customerId));
+    }
+  };
 
   // Upload states (simplified for async)
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -64,23 +75,33 @@ const CustomerPage: NextPage<Props> = (props) => {
     let params = `page=${refPage.current}&limit=${limit}`;
 
     if (filterUsername) {
-      params += `&username=${filterUsername}`;
+      params += `&mobile_no=${filterUsername}`;
     }
     if (filterName) {
       params += `&name=${filterName}`;
     }
+    console.log("dateRange?.startDate  : ", dateRange?.startDate);
+    console.log("dateRange?.endDate  : ", dateRange?.endDate);
     if (dateRange?.startDate && dateRange?.endDate) {
-      const startDate = dayjs(dateRange.startDate).format('YYYY-MM-DDTHH:mm:ssZ');
-      const endDate = dayjs(dateRange.endDate).format('YYYY-MM-DDTHH:mm:ssZ');
-      params += `&startDate=${startDate}&endDate=${endDate}`;
+      const startDate = dayjs(dateRange.startDate).startOf("day").unix();
+      const endDate = dayjs(dateRange.endDate).endOf("day").unix();
+      params += `&registered_at_start=${startDate}&registered_at_end=${endDate}`;
     }
+      if (source) {
+      params += `&source=${source}`;
+    }
+    console.log("param  : ", params);
 
     try {
-      const res_customer_list = await Backend.get(`/api/v1/customer/get-list?${params}`);
-      const { data: customerData, count: totalCount } = res_customer_list.data;
+      const res_customer_list = await Backend.get(
+        `/api/v1/customer/get-list?${params}`
+      );
+      const { data, count } = res_customer_list.data;
+      const totalPages = Math.ceil(count / limit);
 
-      setData(customerData);
-      setCount(totalCount);
+      console.log("data : ", data);
+      setData(data.data);
+      setCount(totalPages);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching customer list:", error);
@@ -101,15 +122,15 @@ const CustomerPage: NextPage<Props> = (props) => {
   // Download template handler
   const handleDownload = async () => {
     try {
-      const link = document.createElement('a');
-      link.href = '/temp/Jadepay_Onboarded_Customer_Data_Template.xlsx';
-      link.download = 'Jadepay_Onboarded_Customer_Data_Template.xlsx';
+      const link = document.createElement("a");
+      link.href = "/temp/Jadepay_Onboarded_Customer_Data_Template.xlsx";
+      link.download = "Jadepay_Onboarded_Customer_Data_Template.xlsx";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error('Download failed:', error);
-      alert('ดาวน์โหลดไม่สำเร็จ');
+      console.error("Download failed:", error);
+      alert("ดาวน์โหลดไม่สำเร็จ");
     }
   };
 
@@ -126,16 +147,41 @@ const CustomerPage: NextPage<Props> = (props) => {
   };
 
   // Simplified file validation
-  const validateFile = (file: File): string | null => {
+  const validateFile = async (file: File): Promise<string | null> => {
     // ตรวจสอบขนาดไฟล์ (50MB)
     if (file.size > 50 * 1024 * 1024) {
-      return 'ขนาดไฟล์ต้องไม่เกิน 50MB';
+      return "ขนาดไฟล์ต้องไม่เกิน 50MB";
     }
 
     // ตรวจสอบนามสกุลไฟล์
     const fileName = file.name.toLowerCase();
-    if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls') && !fileName.endsWith('.csv')) {
-      return 'กรุณาเลือกไฟล์ .xlsx, .xls หรือ .csv เท่านั้น';
+    if (
+      !fileName.endsWith(".xlsx") &&
+      !fileName.endsWith(".xls") &&
+      !fileName.endsWith(".csv")
+    ) {
+      return "กรุณาเลือกไฟล์ .xlsx, .xls หรือ .csv เท่านั้น";
+    }
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const arrayBuffer = await file.arrayBuffer(); // ใช้ arrayBuffer() สำหรับไฟล์
+      await workbook.xlsx.load(arrayBuffer);
+
+      const firstSheet = workbook.worksheets[0];
+      const secondRow = firstSheet.getRow(2);
+
+      const firstCol = secondRow.getCell(1).value;
+      const secondCol = secondRow.getCell(2).value;
+      const thirdCol = secondRow.getCell(3).value;
+
+      if (!firstCol || !secondCol || !thirdCol) {
+        return "พบข้อมูลน้อยกว่าหรือเท่ากับ 1 แถว กรุณาตรวจสอบไฟล์อีกครั้ง";
+      }
+    } catch (error) {
+      console.log("valicatch (error) ");
+      console.error("Error reading Excel file:", error);
+      return "เกิดข้อผิดพลาดในการอ่านไฟล์";
     }
 
     return null;
@@ -143,64 +189,69 @@ const CustomerPage: NextPage<Props> = (props) => {
 
   // Async upload handler
   const handleUpload = async () => {
-  if (!uploadFile) {
-    alert('กรุณาเลือกไฟล์ก่อน');
-    return;
-  }
-
-  // Basic validation
-  const validationError = validateFile(uploadFile);
-  if (validationError) {
-    alert(validationError);
-    return;
-  }
-
-  setIsUploading(true);
-
-  try {
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-
-    // เรียก NextJS API Route
-    const response = await fetch('/api/ict-partner/upload-customer', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!uploadFile) {
+      alert("กรุณาเลือกไฟล์ก่อน");
+      return;
     }
 
-    const result = await response.json();
-    
-    alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
-    
-    // เคลียร์ไฟล์ทันที
-    clearUpload();
-    
-  } catch (error: any) {
-    console.error('Upload failed:', error);
-    alert('อัปโหลดไม่สำเร็จ: ' + error.message);
-  } finally {
-    setIsUploading(false);
-  }
-};
+    // Basic validation
+    const validationError = await validateFile(uploadFile);
+    if (validationError) {
+      //alert(validationError);
+      AlertSBD.fire({
+        icon: "error",
+        titleText: validationError,
+        text: "",
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+
+      // เรียก NextJS API Route
+      const response = await fetch("/api/ict-partner/upload-customer", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
+
+      // เคลียร์ไฟล์ทันที
+      clearUpload();
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      alert("อัปโหลดไม่สำเร็จ: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Clear upload state
   const clearUpload = () => {
     setUploadFile(null);
     if (uploadFileRef.current) {
-      uploadFileRef.current.value = '';
+      uploadFileRef.current.value = "";
     }
   };
 
   // Format file size helper
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   // Manual refresh handler
@@ -209,6 +260,9 @@ const CustomerPage: NextPage<Props> = (props) => {
     handleFilter();
   };
 
+  const handleProcess = async () => {
+    
+  }
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -229,7 +283,7 @@ const CustomerPage: NextPage<Props> = (props) => {
             {/* Header with Download/Upload buttons */}
             <div className="flex items-center justify-between mb-4">
               <div className="text-lg font-semibold">Search User</div>
-              
+
               <div className="flex gap-2">
                 {/* Download Template Button */}
                 <ButtonOutline
@@ -239,7 +293,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <Download className="w-4 h-4" />
                   Download Template
                 </ButtonOutline>
-                
+
                 {/* Upload Button */}
                 <ButtonOutline
                   className="flex items-center gap-2 px-4 py-2 border border-[--border-color] rounded-md hover:bg-gray-50"
@@ -247,9 +301,9 @@ const CustomerPage: NextPage<Props> = (props) => {
                   disabled={isUploading}
                 >
                   <Upload className="w-4 h-4" />
-                  {isUploading ? 'Uploading...' : 'Upload File'}
+                  {isUploading ? "Uploading..." : "Upload File"}
                 </ButtonOutline>
-                
+
                 {/* Refresh Button */}
                 <ButtonOutline
                   className="flex items-center gap-2 px-4 py-2 border border-[--border-color] rounded-md hover:bg-gray-50"
@@ -258,7 +312,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <RefreshCw className="w-4 h-4" />
                   Refresh
                 </ButtonOutline>
-                
+
                 {/* Hidden file input */}
                 <input
                   ref={uploadFileRef}
@@ -269,17 +323,21 @@ const CustomerPage: NextPage<Props> = (props) => {
                 />
               </div>
             </div>
-            
+
             {/* Upload File Preview */}
             {uploadFile && (
               <div className="mb-4 p-3 border border-gray-200 rounded-lg bg-blue-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-900">{uploadFile.name}</span>
-                    <span className="text-xs text-gray-500">({formatFileSize(uploadFile.size)})</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {uploadFile.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ({formatFileSize(uploadFile.size)})
+                    </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     {!isUploading && (
                       <ButtonFill
@@ -289,7 +347,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                         Upload
                       </ButtonFill>
                     )}
-                    
+
                     <button
                       onClick={clearUpload}
                       className="p-1 text-gray-400 hover:text-gray-600"
@@ -299,7 +357,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Simple loading indicator */}
                 {isUploading && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
@@ -309,7 +367,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                 )}
               </div>
             )}
-            
+
             {/* Search Filters */}
             <div className="flex gap-4 items-center pb-4">
               <div className="mt-4">
@@ -334,6 +392,19 @@ const CustomerPage: NextPage<Props> = (props) => {
                   value={filterName}
                   onChange={(e) => setFilterName(e.target.value)}
                 />
+              </div>
+              <div className="mt-4 grow">
+                <select
+                  className="select select-ui w-full"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Source
+                  </option>
+                  <option value="Online">Online</option>
+                  <option value="FileUpload">FileUpload</option>
+                </select>
               </div>
               <div className="mt-4 grow">
                 <div className="date-box relative w-full border border-[--border-color] rounded-md">
@@ -369,17 +440,19 @@ const CustomerPage: NextPage<Props> = (props) => {
               </ButtonOutline>
             </div>
           </div>
-          
+
           {/* Data Table */}
           <div>
             <div className="overflow-x-auto border border-[--border-color] rounded-lg">
               <table className="table">
                 <thead>
                   <tr className="border-[--border-color]">
+                    <th></th>
                     <th>Username</th>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Register Date</th>
+                    <th>Status</th>
                     <th>Source</th>
                     <th>Action</th>
                   </tr>
@@ -396,20 +469,44 @@ const CustomerPage: NextPage<Props> = (props) => {
                   ) : data && data.length > 0 ? (
                     data?.map((item, index) => (
                       <tr key={index} className="hover border-[--border-color]">
-                        <td>{item.user_id}</td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            // ใช้ checked เพื่อบอกสถานะการเลือก
+                            checked={selectedCustomers.includes(
+                              item.customer_id
+                            )}
+                            // ใช้ onChange เพื่อเรียกฟังก์ชันจัดการ state
+                            onChange={(e) =>
+                              handleCheckboxChange(
+                                item.customer_id,
+                                e.target.checked
+                              )
+                            }
+                          />
+                        </td>
+                        <td>{item.mobile_no}</td>
                         <td>{`${item.fullname}`.trim()}</td>
                         <td>{item.email}</td>
-                        <td>{dayjs(item.created_at).format('DD/MM/YYYY HH:mm:ss')}</td>
                         <td>
-                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                            item.kyc_status === 'approved' ? 'bg-green-100 text-green-800' :
-                            item.kyc_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            item.kyc_status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {item.source}
+                          {dayjs(item.created_at).format("DD/MM/YYYY HH:mm:ss")}
+                        </td>
+                        <td>
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full font-medium ${
+                              item.kyc_status === "Approve"
+                                ? "bg-green-100 text-green-800"
+                                : item.kyc_status === "Pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : item.kyc_status === "Review"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {item.kyc_status}
                           </span>
                         </td>
+                        <td>{item.source}</td>
                         <td>
                           <div className="flex gap-2">
                             <Link href={`/customer/edit/${item.customer_id}`}>
@@ -433,7 +530,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Pagination */}
             <div className="flex justify-end">
               <Pagination
@@ -445,6 +542,20 @@ const CustomerPage: NextPage<Props> = (props) => {
                 }}
               />
             </div>
+
+             <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
+        <div className="flex gap-4 items-center justify-end">
+        
+          <ButtonFill
+            className="btn btn-secondary btn-sm p-3 min-h-[38px]"
+            type="button"
+            onClick={handleProcess}
+          >
+            {"send to ICT"}
+            {loading && <span className="ml-1 loading loading-spinner"></span>}
+          </ButtonFill>
+        </div>
+      </div>
           </div>
         </div>
       </div>

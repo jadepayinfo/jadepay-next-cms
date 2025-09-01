@@ -6,13 +6,14 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
+     console.log('api/login')
     const { username, password } = req.body;
     const payload = {
       username,
       password
     }
     const response = await Backend.post(`/api/v1/auth/signin`, payload);
-    res.json({ success: true, ...response.data.data })
+    res.json({ success: true, ...response.data })
   } catch (error: any) {
     console.log('Error. api/login', error)
     res

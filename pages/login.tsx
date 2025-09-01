@@ -43,17 +43,17 @@ const LoginPage: NextPage<Props> = (props) => {
         username,
         password
       });
+      console.log("response : ", response.data.data)
 
-
-      if (response.data.token.access_token == null) {
-        setErr('Internal Server Error');
+      if (response.data.data?.token?.access_token == null) {
+        setErr(response.data.status_detail);
         setLoading(false);
         return;
       }
-      if (response.data.token.access_token) {
-        const token = response.data.token.access_token;
+      if (response.data.data?.token?.access_token) {
+        const token = response.data.data.token.access_token;
         Cookies.set(TOKEN_APP, token);
-        router.replace('/dashboard');
+        router.replace('/customer');
         setLoading(false);
 
         setLoading(false);
@@ -128,7 +128,7 @@ const LoginPage: NextPage<Props> = (props) => {
             </div>
           </div>
            <div className="login-bg hidden lg:block col-span-6">
-            <div className="flex justify-center items-center h-full w-full">
+            <div className="flex justify-center items-center h-full w-4/5">
               <ImageLogin className="bg-login-size w-64 h-auto " />
             </div>
           </div>

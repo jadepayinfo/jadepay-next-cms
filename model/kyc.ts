@@ -79,6 +79,7 @@ export interface KycDocument {
   ict_mapping_id: number;
   remark:string | null;
   status: string | null;
+  issue_country: string | null;
 }
 
 export interface KycDocumentAction {
