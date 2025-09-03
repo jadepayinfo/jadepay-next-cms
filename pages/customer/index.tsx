@@ -20,7 +20,7 @@ import { Customer } from "@/model/customer";
 import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
 import Pagination from "@/components/share/pagination";
-import { Download, Upload, FileText, X, RefreshCw } from "lucide-react";
+import { Download, Upload, FileText, X, RefreshCw,View } from "lucide-react";
 import ExcelJS from "exceljs"; // import exceljs
 import AlertSBD from "@/components/share/modal/alert_sbd";
 
@@ -32,9 +32,10 @@ const CustomerPage: NextPage<Props> = (props) => {
   const limit = 10;
 
   const initDateRange = () => {
-    const start = dayjs.utc().startOf("month");
-    const end = dayjs.utc().endOf("month");
-    return { startDate: start as any, endDate: end as any };
+    // const start = dayjs.utc().startOf("month");
+    // const end = dayjs.utc().endOf("month");
+    // return { startDate: start as any, endDate: end as any };
+    return { startDate: null, endDate: null };
   };
 
   // Filter states
@@ -80,8 +81,6 @@ const CustomerPage: NextPage<Props> = (props) => {
     if (filterName) {
       params += `&name=${filterName}`;
     }
-    console.log("dateRange?.startDate  : ", dateRange?.startDate);
-    console.log("dateRange?.endDate  : ", dateRange?.endDate);
     if (dateRange?.startDate && dateRange?.endDate) {
       const startDate = dayjs(dateRange.startDate).startOf("day").unix();
       const endDate = dayjs(dateRange.endDate).endOf("day").unix();
@@ -90,7 +89,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       if (source) {
       params += `&source=${source}`;
     }
-    console.log("param  : ", params);
 
     try {
       const res_customer_list = await Backend.get(
@@ -114,7 +112,7 @@ const CustomerPage: NextPage<Props> = (props) => {
   const clearFilter = () => {
     setFilterUsername("");
     setFilterName("");
-    setDateRange(initDateRange());
+    setDateRange({ startDate: null, endDate: null });
     refPage.current = 1;
     handleFilter();
   };
@@ -157,10 +155,9 @@ const CustomerPage: NextPage<Props> = (props) => {
     const fileName = file.name.toLowerCase();
     if (
       !fileName.endsWith(".xlsx") &&
-      !fileName.endsWith(".xls") &&
-      !fileName.endsWith(".csv")
+      !fileName.endsWith(".xls") 
     ) {
-      return "กรุณาเลือกไฟล์ .xlsx, .xls หรือ .csv เท่านั้น";
+      return "กรุณาเลือกไฟล์ .xlsx, .xls  เท่านั้น";
     }
 
     try {
@@ -511,7 +508,10 @@ const CustomerPage: NextPage<Props> = (props) => {
                           <div className="flex gap-2">
                             <Link href={`/customer/edit/${item.customer_id}`}>
                               <ButtonFill className="px-3 py-2">
-                                <IconEdit />
+                                  {item.kyc_status === "Approve" ? (
+                                    <View className="w-4 h-4"/>
+                                    ):( <IconEdit className="w-4 h-4"/>)}
+                               
                               </ButtonFill>
                             </Link>
                           </div>

@@ -103,6 +103,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country)
     );
   });
+  
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
   const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
@@ -267,6 +268,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
           expired_date: formatDate(expiredDate.startDate),
           ict_mapping_id: ictId,
           status: "approve",
+          issue_country:issue_country
         };
         
         await onApproveDocument(updated);
@@ -286,7 +288,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     }
 
     // ถ้าไม่ใช่ selfie ให้ validate field อื่นๆ
-    if (!isSelfie) {
+    if (!isSelfie) {      
       // Document Type
       if (docType === 0) {
         errors.push("กรุณาเลือก Document Type");
@@ -312,13 +314,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         errors.push("กรุณาเลือก Expired Date");
       }
 
-      // เช็คว่า Expired Date ต้องมากกว่า Issued Date
-      if (formatDate(issuedDate.startDate) && formatDate(expiredDate.startDate)) {
-        const issued = new Date(formatDate(issuedDate.startDate)!);
-        const expired = new Date(formatDate(expiredDate.startDate)!);
-        if (expired <= issued) {
-          errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
-        }
+      // // เช็คว่า Expired Date ต้องมากกว่า Issued Date
+      // if (formatDate(issuedDate.startDate) && formatDate(expiredDate.startDate)) {
+      //   const issued = new Date(formatDate(issuedDate.startDate)!);
+      //   const expired = new Date(formatDate(expiredDate.startDate)!);
+      //   if (expired <= issued) {
+      //     errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
+      //   }
+      // }
+
+       // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
+      if (issue_country === "" ) {
+        errors.push("กรุณาเลือก Issued Country");
       }
 
       // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
@@ -380,8 +387,86 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   return (
     <>
       <tr className="hover:bg-gray-50">
+         {/* Action Buttons */}
+        <td className="px-3 py-4">
+          {status === "approve" ? (
+            // ถ้า status = approve ให้แสดงแค่ข้อความ
+            <div className="flex justify-center items-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+          ) : status === "reject" ? (
+            // ถ้า status = approve ให้แสดงแค่ข้อความ
+            <div className="flex justify-center items-center">
+              <XCircle className="w-6 h-6 text-red-600" />
+            </div>
+          )
+          : (
+            <div className="flex flex-col gap-1">
+              {/* บรรทัดที่ 1 - ปุ่มหลัก */}
+              <div className="flex gap-1 justify-center">
+                <div className="relative group">
+                  <button
+                    onClick={handleSave}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                    บันทึกข้อมูล
+                  </div>
+                </div>
+
+                {onApproveDocument && (
+                  <div className="relative group">
+                    <button
+                      onClick={handleApprove}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      อนุมัติเอกสาร
+                    </div>
+                  </div>
+                )}
+
+                
+              </div>
+
+              {/* บรรทัดที่ 2 - ปุ่มรอง */}
+              <div className="flex gap-1 justify-center">
+                {onRejectDocument && (
+                  <div className="relative group">
+                    <button
+                      onClick={openRejectModal}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      ปฏิเสธเอกสาร
+                    </div>
+                  </div>
+                )}
+                <div className="relative group">
+                  <button
+                    onClick={openRequiredModal}
+                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                  >
+                    <FileWarning className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                    ต้องการเพิ่มเติม
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          )}
+        </td>
+        
         {/* Index */}
-        <td className="px-3 py-4 text-center">{index + 1}</td>
+        {/* <td className="px-3 py-4 text-center">{index + 1}</td> */}
 
         {/* Image */}
         <td className="px-3 py-4 text-center">
@@ -587,79 +672,7 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
             {status}
           </span>
         </td>
-
-        {/* Action Buttons */}
-        <td className="px-3 py-4">
-          {status === "approve" ? (
-            // ถ้า status = approve ให้แสดงแค่ข้อความ
-            <div className="flex justify-center items-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {/* บรรทัดที่ 1 - ปุ่มหลัก */}
-              <div className="flex gap-1 justify-center">
-                <div className="relative group">
-                  <button
-                    onClick={handleSave}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                  </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                    บันทึกข้อมูล
-                  </div>
-                </div>
-
-                {onApproveDocument && (
-                  <div className="relative group">
-                    <button
-                      onClick={handleApprove}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                      อนุมัติเอกสาร
-                    </div>
-                  </div>
-                )}
-
-                
-              </div>
-
-              {/* บรรทัดที่ 2 - ปุ่มรอง */}
-              <div className="flex gap-1 justify-center">
-                {onRejectDocument && (
-                  <div className="relative group">
-                    <button
-                      onClick={openRejectModal}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                      ปฏิเสธเอกสาร
-                    </div>
-                  </div>
-                )}
-                <div className="relative group">
-                  <button
-                    onClick={openRequiredModal}
-                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                  >
-                    <FileWarning className="w-4 h-4" />
-                  </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                    ต้องการเพิ่มเติม
-                  </div>
-                </div>
-                
-              </div>
-            </div>
-          )}
-        </td>
-
+      
         {/* Remark */}
         <td className="px-3 py-4 text-sm">
           {!doc.remark ? (
