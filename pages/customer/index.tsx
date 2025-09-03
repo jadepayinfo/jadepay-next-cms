@@ -20,9 +20,10 @@ import { Customer } from "@/model/customer";
 import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
 import Pagination from "@/components/share/pagination";
-import { Download, Upload, FileText, X, RefreshCw,View } from "lucide-react";
+import { Download, Upload, FileText, X, RefreshCw,View ,UserCheck} from "lucide-react";
 import ExcelJS from "exceljs"; // import exceljs
 import AlertSBD from "@/components/share/modal/alert_sbd";
+import axios from "axios";
 
 dayjs.extend(utc);
 
@@ -32,10 +33,9 @@ const CustomerPage: NextPage<Props> = (props) => {
   const limit = 10;
 
   const initDateRange = () => {
-    // const start = dayjs.utc().startOf("month");
-    // const end = dayjs.utc().endOf("month");
-    // return { startDate: start as any, endDate: end as any };
-    return { startDate: null, endDate: null };
+    const start = dayjs.utc().startOf("month");
+    const end = dayjs.utc().endOf("month");
+    return { startDate: null as any, endDate: null as any };
   };
 
   // Filter states
@@ -81,6 +81,8 @@ const CustomerPage: NextPage<Props> = (props) => {
     if (filterName) {
       params += `&name=${filterName}`;
     }
+    console.log("dateRange?.startDate  : ", dateRange?.startDate);
+    console.log("dateRange?.endDate  : ", dateRange?.endDate);
     if (dateRange?.startDate && dateRange?.endDate) {
       const startDate = dayjs(dateRange.startDate).startOf("day").unix();
       const endDate = dayjs(dateRange.endDate).endOf("day").unix();
@@ -89,6 +91,7 @@ const CustomerPage: NextPage<Props> = (props) => {
       if (source) {
       params += `&source=${source}`;
     }
+    console.log("param  : ", params);
 
     try {
       const res_customer_list = await Backend.get(
@@ -112,7 +115,7 @@ const CustomerPage: NextPage<Props> = (props) => {
   const clearFilter = () => {
     setFilterUsername("");
     setFilterName("");
-    setDateRange({ startDate: null, endDate: null });
+    setDateRange(initDateRange());
     refPage.current = 1;
     handleFilter();
   };
@@ -155,9 +158,10 @@ const CustomerPage: NextPage<Props> = (props) => {
     const fileName = file.name.toLowerCase();
     if (
       !fileName.endsWith(".xlsx") &&
-      !fileName.endsWith(".xls") 
+      !fileName.endsWith(".xls") &&
+      !fileName.endsWith(".csv")
     ) {
-      return "กรุณาเลือกไฟล์ .xlsx, .xls  เท่านั้น";
+      return "กรุณาเลือกไฟล์ .xlsx, .xls หรือ .csv เท่านั้น";
     }
 
     try {
@@ -258,8 +262,41 @@ const CustomerPage: NextPage<Props> = (props) => {
   };
 
   const handleProcess = async () => {
-    
+    // console.log("selectedCustomers  : ", selectedCustomers);
+    const response = await fetch("/api/ict-partner/submit-to-ict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_ids: selectedCustomers }),
+    });
+
+    if (response.ok) {
+      setData((prevData) =>
+        prevData.map((item) =>
+          selectedCustomers.includes(item.customer_id)
+            ? { ...item, kyc_status: "Processing" }
+            : item
+        )
+      );
+      setSelectedCustomers([]);
+      alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
+      // อาจจะ refresh หรือ redirect
+      handleFilter(); // refresh ข้อมูล
+    }
+  };
+
+  const handleApproveKYC = async (UserIdId: number , customerName: string) => {
+     const confirmResult = confirm(`ต้องการแก้ไขข้อมูล approve สำหรับ ${customerName} หรือไม่?`);
+    if (!confirmResult) return;
+    try{
+      const response = await  axios.post("/api/kyc/approve-kyc", {
+        user_id: UserIdId,
+      });
+    } catch (error) {
+      console.error("Error resolving duplicate:", error);
+      alert("เกิดข้อผิดพลาดในการแก้ไข Approve");
+    }
   }
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -467,6 +504,9 @@ const CustomerPage: NextPage<Props> = (props) => {
                     data?.map((item, index) => (
                       <tr key={index} className="hover border-[--border-color]">
                         <td>
+                          {item.kyc_status === "Processing" || item.kyc_status === "waiting for ict approval" || item.kyc_status === "duplicate"? (
+                              <div className="w-4 h-4"></div>
+                          ):(
                           <input
                             type="checkbox"
                             // ใช้ checked เพื่อบอกสถานะการเลือก
@@ -481,6 +521,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                               )
                             }
                           />
+                          )}                        
                         </td>
                         <td>{item.mobile_no}</td>
                         <td>{`${item.fullname}`.trim()}</td>
@@ -491,12 +532,14 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.kyc_status === "Approve"
+                              item.kyc_status === "Approve"  || item.kyc_status === "kyc complete" 
                                 ? "bg-green-100 text-green-800"
-                                : item.kyc_status === "Pending"
+                                : item.kyc_status === "Pending" || item.kyc_status === "Processing" || item.kyc_status === "waiting for ict approval"
                                   ? "bg-yellow-100 text-yellow-800"
                                   : item.kyc_status === "Review"
                                     ? "bg-blue-100 text-blue-800"
+                                     : item.kyc_status === "duplicate"
+                                    ? "bg-red-100 text-red-800"
                                     : "bg-gray-100 text-gray-800"
                             }`}
                           >
@@ -505,15 +548,25 @@ const CustomerPage: NextPage<Props> = (props) => {
                         </td>
                         <td>{item.source}</td>
                         <td>
-                          <div className="flex gap-2">
-                            <Link href={`/customer/edit/${item.customer_id}`}>
-                              <ButtonFill className="px-3 py-2">
-                                  {item.kyc_status === "Approve" ? (
-                                    <View className="w-4 h-4"/>
-                                    ):( <IconEdit className="w-4 h-4"/>)}
-                               
-                              </ButtonFill>
+                          <div className="flex gap-2">                            
+                            <Link href={`/customer/edit/${item.customer_id}`}>                              
+                                 { item.kyc_status === "Approve" || item.kyc_status === "duplicate" || item.kyc_status === "waiting for ict approval" || item.kyc_status === "kyc complete"? (
+                                  <ButtonFill className="px-3 py-2 btn-primary ">
+                                    <View className="w-4 h-4" />
+                                    </ButtonFill>
+                                 ): ( 
+                                  <ButtonFill className="px-3 py-2">
+                                  <IconEdit />
+                                  </ButtonFill>
+                                 )}  
                             </Link>
+                            {
+                              item.kyc_status === "duplicate" ||  item.kyc_status ==="waiting for ict approval" ? (
+                                    <ButtonFill className="px-3 py-2 btn-error" onClick={() => handleApproveKYC(item.user_id,item.fullname)}>
+                                      <UserCheck className="w-4 h-4" /> 
+                                    </ButtonFill>
+                                 ):("")
+                            }
                           </div>
                         </td>
                       </tr>
@@ -554,6 +607,8 @@ const CustomerPage: NextPage<Props> = (props) => {
             {"send to ICT"}
             {loading && <span className="ml-1 loading loading-spinner"></span>}
           </ButtonFill>
+
+          
         </div>
       </div>
           </div>

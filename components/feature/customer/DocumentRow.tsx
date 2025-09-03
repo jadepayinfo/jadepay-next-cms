@@ -103,7 +103,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country)
     );
   });
-  
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
   const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
@@ -268,7 +267,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
           expired_date: formatDate(expiredDate.startDate),
           ict_mapping_id: ictId,
           status: "approve",
-          issue_country:issue_country
         };
         
         await onApproveDocument(updated);
@@ -288,7 +286,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     }
 
     // ถ้าไม่ใช่ selfie ให้ validate field อื่นๆ
-    if (!isSelfie) {      
+    if (!isSelfie) {
       // Document Type
       if (docType === 0) {
         errors.push("กรุณาเลือก Document Type");
@@ -322,10 +320,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       //     errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
       //   }
       // }
-
-       // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
-      if (issue_country === "" ) {
-        errors.push("กรุณาเลือก Issued Country");
+      if (issue_country === "" && currentNationalityOptions.length > 0) {
+          errors.push("กรุณาเลือก Issued Country");
       }
 
       // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
@@ -394,13 +390,7 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
             <div className="flex justify-center items-center">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
-          ) : status === "reject" ? (
-            // ถ้า status = approve ให้แสดงแค่ข้อความ
-            <div className="flex justify-center items-center">
-              <XCircle className="w-6 h-6 text-red-600" />
-            </div>
-          )
-          : (
+          ) : (
             <div className="flex flex-col gap-1">
               {/* บรรทัดที่ 1 - ปุ่มหลัก */}
               <div className="flex gap-1 justify-center">
@@ -464,9 +454,6 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
             </div>
           )}
         </td>
-        
-        {/* Index */}
-        {/* <td className="px-3 py-4 text-center">{index + 1}</td> */}
 
         {/* Image */}
         <td className="px-3 py-4 text-center">
@@ -672,7 +659,7 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
             {status}
           </span>
         </td>
-      
+
         {/* Remark */}
         <td className="px-3 py-4 text-sm">
           {!doc.remark ? (
