@@ -140,7 +140,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   // Computed values
   const currentDocOptions = optionsLoaded ? getDocumentOptions(docRole) : [];
   const currentICTOptions = optionsLoaded ? globalOptions.ictMapping : [];
-  const currentNationalityOptions = optionsLoaded ? globalOptions.nationality : [];
+  const currentNationalityOptions = optionsLoaded
+    ? globalOptions.nationality
+    : [];
   // Event handlers
   const handleDocRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setDocRole(e.target.value);
@@ -172,7 +174,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       expired_date: formatDate(expiredDate.startDate),
       ict_mapping_id: ictId,
       status: "review",
-      issue_country:issue_country
+      issue_country: issue_country,
     };
     setHasUnsavedChanges(false);
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
@@ -198,9 +200,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       try {
         await onRejectDocument(doc, rejectReason);
         closeRejectModal();
-      } catch (error) {
-        console.error("Failed to reject document:", error);
-      }
+      } catch (error) {}
     }
   };
 
@@ -235,21 +235,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
         await onRequiredDocument(updated, requiredReason);
         closeRequiredModal();
-      } catch (error) {
-        console.error("Failed to required document:", error);
-      }
+      } catch (error) {}
     }
   };
-  
-  const handleApprove = async () => {
 
+  const handleApprove = async () => {
     if (hasUnsavedChanges) {
       alert("กรุณาบันทึกข้อมูลก่อนทำการอนุมัติเอกสาร");
       return;
     }
 
     const validation = validateDocument();
-    
+
     if (!validation.isValid) {
       alert("กรุณากรอกข้อมูลให้ครบถ้วน:\n\n" + validation.errors.join("\n"));
       return;
@@ -268,11 +265,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
           ict_mapping_id: ictId,
           status: "approve",
         };
-        
+
         await onApproveDocument(updated);
-      } catch (error) {
-        console.error("Failed to approve document:", error);
-      }
+      } catch (error) {}
     }
   };
 
@@ -312,13 +307,16 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         errors.push("กรุณาเลือก Expired Date");
       }
 
-      // เช็คว่า Expired Date ต้องมากกว่า Issued Date
-      if (formatDate(issuedDate.startDate) && formatDate(expiredDate.startDate)) {
-        const issued = new Date(formatDate(issuedDate.startDate)!);
-        const expired = new Date(formatDate(expiredDate.startDate)!);
-        if (expired <= issued) {
-          errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
-        }
+      // // เช็คว่า Expired Date ต้องมากกว่า Issued Date
+      // if (formatDate(issuedDate.startDate) && formatDate(expiredDate.startDate)) {
+      //   const issued = new Date(formatDate(issuedDate.startDate)!);
+      //   const expired = new Date(formatDate(expiredDate.startDate)!);
+      //   if (expired <= issued) {
+      //     errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
+      //   }
+      // }
+      if (issue_country === "" && currentNationalityOptions.length > 0) {
+        errors.push("กรุณาเลือก Issued Country");
       }
 
       // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
@@ -334,27 +332,30 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const status = doc.status;
   const isRejected = status === "Rejected";
 
-const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
- const checkForChanges = () => {
-  // check File
-  let checkFile_Change = false
-  if ( rotationAngles[doc.kyc_doc_id]!= 0){
-    checkFile_Change = false
-  }
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const checkForChanges = () => {
+    // check File
+    let checkFile_Change = false;
+    if (rotationAngles[doc.kyc_doc_id] != 0) {
+      checkFile_Change = false;
+    }
 
-  //check control  
-  const currentData = {
+    //check control
+    const currentData = {
       docRole,
       docType,
       position,
       docIdNo,
       ictId,
       issuedDate: formatDate(issuedDate.startDate),
-      expiredDate: formatDate(expiredDate.startDate)
+      expiredDate: formatDate(expiredDate.startDate),
     };
-   
+
     const originalData = {
-      docRole: (doc.document_info || "").toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country),
+      docRole:
+        (doc.document_info || "").toLowerCase().replace(/ /g, "_") +
+        "_" +
+        getCountryCode(country),
       docType: doc.doctype_id,
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
@@ -363,25 +364,101 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
       expiredDate: formatDate(expiredDate.startDate),
     };
 
-    const hasChanges = JSON.stringify(currentData) !== JSON.stringify(originalData);
-  console.log("checkFile_Change : ", checkFile_Change)
-    if (hasChanges || checkFile_Change){
+    const hasChanges =
+      JSON.stringify(currentData) !== JSON.stringify(originalData);
+    console.log("checkFile_Change : ", checkFile_Change);
+    if (hasChanges || checkFile_Change) {
       setHasUnsavedChanges(true);
-    }else{
+    } else {
       setHasUnsavedChanges(false);
     }
-    
+
     return hasChanges;
   };
-    useEffect(() => {
+  useEffect(() => {
     checkForChanges();
-  }, [docRole, docType, position, docIdNo, ictId, issuedDate, expiredDate, rotationAngles[doc.kyc_doc_id]]);
+  }, [
+    docRole,
+    docType,
+    position,
+    docIdNo,
+    ictId,
+    issuedDate,
+    expiredDate,
+    rotationAngles[doc.kyc_doc_id],
+  ]);
 
   return (
     <>
       <tr className="hover:bg-gray-50">
-        {/* Index */}
-        <td className="px-3 py-4 text-center">{index + 1}</td>
+        {/* Action Buttons */}
+        <td className="px-3 py-4">
+          {status === "approve" ? (
+            // ถ้า status = approve ให้แสดงแค่ข้อความ
+            <div className="flex justify-center items-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {/* บรรทัดที่ 1 - ปุ่มหลัก */}
+              <div className="flex gap-1 justify-center">
+                <div className="relative group">
+                  <button
+                    onClick={handleSave}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                    บันทึกข้อมูล
+                  </div>
+                </div>
+
+                {onApproveDocument && (
+                  <div className="relative group">
+                    <button
+                      onClick={handleApprove}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      อนุมัติเอกสาร
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* บรรทัดที่ 2 - ปุ่มรอง */}
+              <div className="flex gap-1 justify-center">
+                {onRejectDocument && (
+                  <div className="relative group">
+                    <button
+                      onClick={openRejectModal}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      ปฏิเสธเอกสาร
+                    </div>
+                  </div>
+                )}
+                <div className="relative group">
+                  <button
+                    onClick={openRequiredModal}
+                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                  >
+                    <FileWarning className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                    ต้องการเพิ่มเติม
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </td>
 
         {/* Image */}
         <td className="px-3 py-4 text-center">
@@ -588,78 +665,6 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
           </span>
         </td>
 
-        {/* Action Buttons */}
-        <td className="px-3 py-4">
-          {status === "approve" ? (
-            // ถ้า status = approve ให้แสดงแค่ข้อความ
-            <div className="flex justify-center items-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {/* บรรทัดที่ 1 - ปุ่มหลัก */}
-              <div className="flex gap-1 justify-center">
-                <div className="relative group">
-                  <button
-                    onClick={handleSave}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                  </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                    บันทึกข้อมูล
-                  </div>
-                </div>
-
-                {onApproveDocument && (
-                  <div className="relative group">
-                    <button
-                      onClick={handleApprove}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                      อนุมัติเอกสาร
-                    </div>
-                  </div>
-                )}
-
-                
-              </div>
-
-              {/* บรรทัดที่ 2 - ปุ่มรอง */}
-              <div className="flex gap-1 justify-center">
-                {onRejectDocument && (
-                  <div className="relative group">
-                    <button
-                      onClick={openRejectModal}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                      ปฏิเสธเอกสาร
-                    </div>
-                  </div>
-                )}
-                <div className="relative group">
-                  <button
-                    onClick={openRequiredModal}
-                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                  >
-                    <FileWarning className="w-4 h-4" />
-                  </button>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                    ต้องการเพิ่มเติม
-                  </div>
-                </div>
-                
-              </div>
-            </div>
-          )}
-        </td>
-
         {/* Remark */}
         <td className="px-3 py-4 text-sm">
           {!doc.remark ? (
@@ -750,7 +755,6 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
           </div>
         </div>
       )}
-
     </>
   );
 };

@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { CatalogueItem } from "@/model/catalogueItem";
-import { 
-  FileText, 
-  FilePlus2
-} from "lucide-react";
+import { FileText, FilePlus2 } from "lucide-react";
 import { KycDocument } from "@/model/kyc";
 import DocumentRow from "./DocumentRow"; // สร้างไฟล์ DocumentRow.tsx แยก
 
@@ -25,7 +22,7 @@ interface Props {
   handleSaveDocument: (doc: KycDocument, rotation: number) => void;
   handleDeleteDocument: (doc: KycDocument) => void;
   handleAddDocument: () => void;
-  handleApproveDocument?:(doc: KycDocument)  => Promise<void>;
+  handleApproveDocument?: (doc: KycDocument) => Promise<void>;
   handleRejectDocument?: (doc: KycDocument, reason: string) => Promise<void>;
   handleInactiveDocument?: (doc: KycDocument, reason: string) => Promise<void>;
   handleReactivateDocument?: (doc: KycDocument) => Promise<void>;
@@ -35,9 +32,12 @@ interface Props {
 // Helper Functions
 const getCountryCode = (country: string): string => {
   switch (country) {
-    case "MMR": return "mm";
-    case "THA": return "th";
-    default: return "mm";
+    case "MMR":
+      return "mm";
+    case "THA":
+      return "th";
+    default:
+      return "mm";
   }
 };
 
@@ -70,7 +70,7 @@ const DocumentTable: React.FC<Props> = ({
     secondary: [],
     additional: [],
     ictMapping: [],
-    nationality: []
+    nationality: [],
   });
   const [optionsLoaded, setOptionsLoaded] = useState(false);
 
@@ -78,33 +78,49 @@ const DocumentTable: React.FC<Props> = ({
   useEffect(() => {
     const loadGlobalOptions = async () => {
       if (optionsLoaded) return;
-      
+
       try {
         const mappedCountry = getCountryCode(country);
-        const [resPrimary, resSecondary, resAdditional, respICTMapping,resNationality] = await Promise.all([
-          axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "primary_document_" + mappedCountry } }),
-          axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "secondary_document_" + mappedCountry } }),
-          axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "additional_document_" + mappedCountry } }),
-          axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "ict_mapping" } }),
-          axios.get(`/api/masconfig/get-catalogue`, { params: { config_key: "country" } }),
+        const [
+          resPrimary,
+          resSecondary,
+          resAdditional,
+          respICTMapping,
+          resNationality,
+        ] = await Promise.all([
+          axios.get(`/api/masconfig/get-catalogue`, {
+            params: { config_key: "primary_document_" + mappedCountry },
+          }),
+          axios.get(`/api/masconfig/get-catalogue`, {
+            params: { config_key: "secondary_document_" + mappedCountry },
+          }),
+          axios.get(`/api/masconfig/get-catalogue`, {
+            params: { config_key: "additional_document_" + mappedCountry },
+          }),
+          axios.get(`/api/masconfig/get-catalogue`, {
+            params: { config_key: "ict_mapping" },
+          }),
+          axios.get(`/api/masconfig/get-catalogue`, {
+            params: { config_key: "country" },
+          }),
         ]);
 
-        const mapToOptions = (data: any): SelectOption[] => 
+        const mapToOptions = (data: any): SelectOption[] =>
           (Object.values(data).filter(Boolean) as CatalogueItem[])
-            .filter(item => item?.id && item?.name_en)
-            .map(item => ({ value: item.id, label: item.name_en }));
+            .filter((item) => item?.id && item?.name_en)
+            .map((item) => ({ value: item.id, label: item.name_en }));
 
         setGlobalOptions({
           primary: mapToOptions(resPrimary.data),
-          secondary: mapToOptions(resSecondary.data), 
+          secondary: mapToOptions(resSecondary.data),
           additional: mapToOptions(resAdditional.data),
           ictMapping: mapToOptions(respICTMapping.data),
-          nationality: mapToOptions(resNationality.data)
+          nationality: mapToOptions(resNationality.data),
         });
-        
+
         setOptionsLoaded(true);
       } catch (error) {
-        console.error('Failed to load global options:', error);
+        console.error("Failed to load global options:", error);
       }
     };
 
@@ -139,8 +155,8 @@ const DocumentTable: React.FC<Props> = ({
           >
             <thead className="bg-gray-50 sticky top-0">
               <tr>
-                <th className="w-16 px-3 py-3 border-b font-medium text-gray-700">
-                  #
+                <th className="w-28 px-3 py-3 border-b font-medium text-gray-700">
+                  Action
                 </th>
                 <th className="w-32 px-3 py-3 border-b font-medium text-gray-700">
                   Image
@@ -173,34 +189,30 @@ const DocumentTable: React.FC<Props> = ({
                   Status
                 </th>
                 <th className="w-52 px-3 py-3 border-b font-medium text-gray-700">
-                  Action
-                </th>
-                <th className="w-52 px-3 py-3 border-b font-medium text-gray-700">
                   Remark
                 </th>
               </tr>
             </thead>
             <tbody>
-              {documents
-                .map((doc, index) => (
-                  <DocumentRow
-                    key={doc.kyc_doc_id}
-                    doc={doc}
-                    index={index}
-                    country={country}
-                    rotationAngles={rotationAngles}
-                    previewUrls={previewUrls}
-                    globalOptions={globalOptions}
-                    optionsLoaded={optionsLoaded}
-                    onSaveDocument={handleSaveDocument}
-                    onOpenPopup={openPopup}
-                    onApproveDocument={handleApproveDocument}
-                    onRejectDocument={handleRejectDocument}
-                    onInactiveDocument={handleInactiveDocument}
-                    onReactivateDocument={handleReactivateDocument}
-                    onRequiredDocument={handleRequiredDocument}
-                  />
-                ))}
+              {documents.map((doc, index) => (
+                <DocumentRow
+                  key={doc.kyc_doc_id}
+                  doc={doc}
+                  index={index}
+                  country={country}
+                  rotationAngles={rotationAngles}
+                  previewUrls={previewUrls}
+                  globalOptions={globalOptions}
+                  optionsLoaded={optionsLoaded}
+                  onSaveDocument={handleSaveDocument}
+                  onOpenPopup={openPopup}
+                  onApproveDocument={handleApproveDocument}
+                  onRejectDocument={handleRejectDocument}
+                  onInactiveDocument={handleInactiveDocument}
+                  onReactivateDocument={handleReactivateDocument}
+                  onRequiredDocument={handleRequiredDocument}
+                />
+              ))}
             </tbody>
           </table>
         </div>

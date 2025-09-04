@@ -6,10 +6,9 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
-    const response = await Backend.post(`/api/v1/kyc/set-action-document`, req.body, {
+    const response = await Backend.post(`/api/v1/kyc/appove-kyc`, req.body, {
       headers
     });
     res.json({ success: true, ...response.data.data })

@@ -27,10 +27,8 @@ export default async function handler(
 ) {
   try {
     const data = await parseForm(req);
-    console.log("Data from parseForm:", data); // Log ข้อมูลที่ได้จากการ Parse Form
 
     const file = data.files.file?.[0];
-    console.log("File object:", file); // Log ข้อมูล Object ไฟล์
 
     const newFileName = file ? `${file.filepath}.${file.originalFilename.split('.').pop()}` : null;
 
@@ -50,20 +48,15 @@ export default async function handler(
     // เพิ่มการจัดการ Field 'step' ถ้ามี
     if (data.fields?.step?.[0] != null) {
       formData.append('step', data.fields.step[0]);
-      console.log("Step field value:", data.fields.step[0]); // Log ค่าของ Field 'step'
     }
 
-    console.log("FormData object:", formData); // Log Object FormData ก่อนส่ง
 
     const accessToken = req.cookies['token']
-    console.log("AccessToken:", accessToken); // Log AccessToken
 
     const headers = {
       'Authorization': `Bearer ${accessToken}`,
       ...formData.getHeaders()
     }
-    console.log("Headers for Backend:", headers); // Log Headers ที่จะส่งไป Backend
-
     // const response = await Backend.post(`/api/v1/kyc/upload-kyc-doc`, formData, { headers })
     // console.log("Backend Response:", response.data); // Log Response ที่ได้จาก Backend
     // fs.unlinkSync(newFileName)
