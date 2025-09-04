@@ -155,7 +155,7 @@ const DocumentTable: React.FC<Props> = ({
           >
             <thead className="bg-gray-50 sticky top-0">
               <tr>
-                <th className="w-52 px-3 py-3 border-b font-medium text-gray-700">
+                <th className="w-28 px-3 py-3 border-b font-medium text-gray-700">
                   Action
                 </th>
                 <th className="w-32 px-3 py-3 border-b font-medium text-gray-700">
