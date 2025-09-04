@@ -27,10 +27,8 @@ export default async function handler(
 ) {
   try {
     const data = await parseForm(req);
-    console.log("Data from parseForm:", data);
 
     const file = data.files.file?.[0];
-    console.log("File object:", file);
 
     if (!file) {
       return res.status(400).json({ 
@@ -41,7 +39,6 @@ export default async function handler(
 
     // สร้างชื่อไฟล์ใหม่
     const newFileName = `${file.filepath}.${file.originalFilename.split('.').pop()}`;
-    console.log("New filename:", newFileName);
 
     // คัดลอกไฟล์
     fs.copyFileSync(file.filepath, newFileName);
@@ -53,14 +50,9 @@ export default async function handler(
     // เพิ่ม field type ถ้ามี
     if (data.fields?.type?.[0] != null) {
       formData.append('type', data.fields.type[0]);
-      console.log("Type field value:", data.fields.type[0]);
     }
-
-    console.log("FormData prepared for Backend");
-
     // เตรียม headers
     const accessToken = req.cookies['token'];
-    console.log("AccessToken:", accessToken);
 
     const headers = {
       'Authorization': `Bearer ${accessToken}`,
@@ -72,25 +64,18 @@ export default async function handler(
     
     // ส่งไฟล์ไป backend แบบ async (fire and forget)
     setImmediate(async () => {
-      try {
-        console.log(`[${jobId}] Starting background upload to ICT`);
-        
+      try {        
         const response = await Backend.post(`/api/v1/ict-partner/upload-user`, formData, { headers });
-        
-        console.log(`[${jobId}] Backend Response:`, response.data);
         
         // ลบไฟล์ temp หลังส่งเสร็จ
         fs.unlinkSync(newFileName);
-        console.log(`[${jobId}] Temp file cleaned up`);
         
       } catch (error: any) {
-        console.error(`[${jobId}] Backend upload failed:`, error.message);
         
         // ลบไฟล์ temp แม้จะ error
         try {
           fs.unlinkSync(newFileName);
         } catch (cleanupError) {
-          console.error(`[${jobId}] Failed to cleanup:`, cleanupError);
         }
       }
     });
@@ -104,7 +89,6 @@ export default async function handler(
     });
 
   } catch (error: any) {
-    console.error('Upload error:', error);
     res.status(500).send({
       success: false,
       message: error.message ?? "Internal Server Error",

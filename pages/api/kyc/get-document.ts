@@ -6,7 +6,6 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-
     const { ['kyc-doc-id']: kycDocId } = req.query;
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
@@ -23,8 +22,6 @@ export default async function handler(
 
 
   } catch (error: any) {
-    console.log('error', error);
-    console.log('/api/v1/kyc/get-kyc-doc', error);
     res
       .status(500)
       .send({

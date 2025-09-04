@@ -140,7 +140,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   // Computed values
   const currentDocOptions = optionsLoaded ? getDocumentOptions(docRole) : [];
   const currentICTOptions = optionsLoaded ? globalOptions.ictMapping : [];
-  const currentNationalityOptions = optionsLoaded ? globalOptions.nationality : [];
+  const currentNationalityOptions = optionsLoaded
+    ? globalOptions.nationality
+    : [];
   // Event handlers
   const handleDocRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setDocRole(e.target.value);
@@ -172,7 +174,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       expired_date: formatDate(expiredDate.startDate),
       ict_mapping_id: ictId,
       status: "review",
-      issue_country:issue_country
+      issue_country: issue_country,
     };
     setHasUnsavedChanges(false);
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
@@ -198,9 +200,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       try {
         await onRejectDocument(doc, rejectReason);
         closeRejectModal();
-      } catch (error) {
-        console.error("Failed to reject document:", error);
-      }
+      } catch (error) {}
     }
   };
 
@@ -235,21 +235,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
         await onRequiredDocument(updated, requiredReason);
         closeRequiredModal();
-      } catch (error) {
-        console.error("Failed to required document:", error);
-      }
+      } catch (error) {}
     }
   };
-  
-  const handleApprove = async () => {
 
+  const handleApprove = async () => {
     if (hasUnsavedChanges) {
       alert("กรุณาบันทึกข้อมูลก่อนทำการอนุมัติเอกสาร");
       return;
     }
 
     const validation = validateDocument();
-    
+
     if (!validation.isValid) {
       alert("กรุณากรอกข้อมูลให้ครบถ้วน:\n\n" + validation.errors.join("\n"));
       return;
@@ -268,11 +265,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
           ict_mapping_id: ictId,
           status: "approve",
         };
-        
+
         await onApproveDocument(updated);
-      } catch (error) {
-        console.error("Failed to approve document:", error);
-      }
+      } catch (error) {}
     }
   };
 
@@ -321,7 +316,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       //   }
       // }
       if (issue_country === "" && currentNationalityOptions.length > 0) {
-          errors.push("กรุณาเลือก Issued Country");
+        errors.push("กรุณาเลือก Issued Country");
       }
 
       // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
@@ -337,27 +332,30 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const status = doc.status;
   const isRejected = status === "Rejected";
 
-const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
- const checkForChanges = () => {
-  // check File
-  let checkFile_Change = false
-  if ( rotationAngles[doc.kyc_doc_id]!= 0){
-    checkFile_Change = false
-  }
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const checkForChanges = () => {
+    // check File
+    let checkFile_Change = false;
+    if (rotationAngles[doc.kyc_doc_id] != 0) {
+      checkFile_Change = false;
+    }
 
-  //check control  
-  const currentData = {
+    //check control
+    const currentData = {
       docRole,
       docType,
       position,
       docIdNo,
       ictId,
       issuedDate: formatDate(issuedDate.startDate),
-      expiredDate: formatDate(expiredDate.startDate)
+      expiredDate: formatDate(expiredDate.startDate),
     };
-   
+
     const originalData = {
-      docRole: (doc.document_info || "").toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country),
+      docRole:
+        (doc.document_info || "").toLowerCase().replace(/ /g, "_") +
+        "_" +
+        getCountryCode(country),
       docType: doc.doctype_id,
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
@@ -366,24 +364,34 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
       expiredDate: formatDate(expiredDate.startDate),
     };
 
-    const hasChanges = JSON.stringify(currentData) !== JSON.stringify(originalData);
-  console.log("checkFile_Change : ", checkFile_Change)
-    if (hasChanges || checkFile_Change){
+    const hasChanges =
+      JSON.stringify(currentData) !== JSON.stringify(originalData);
+    console.log("checkFile_Change : ", checkFile_Change);
+    if (hasChanges || checkFile_Change) {
       setHasUnsavedChanges(true);
-    }else{
+    } else {
       setHasUnsavedChanges(false);
     }
-    
+
     return hasChanges;
   };
-    useEffect(() => {
+  useEffect(() => {
     checkForChanges();
-  }, [docRole, docType, position, docIdNo, ictId, issuedDate, expiredDate, rotationAngles[doc.kyc_doc_id]]);
+  }, [
+    docRole,
+    docType,
+    position,
+    docIdNo,
+    ictId,
+    issuedDate,
+    expiredDate,
+    rotationAngles[doc.kyc_doc_id],
+  ]);
 
   return (
     <>
       <tr className="hover:bg-gray-50">
-         {/* Action Buttons */}
+        {/* Action Buttons */}
         <td className="px-3 py-4">
           {status === "approve" ? (
             // ถ้า status = approve ให้แสดงแค่ข้อความ
@@ -419,8 +427,6 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
                     </div>
                   </div>
                 )}
-
-                
               </div>
 
               {/* บรรทัดที่ 2 - ปุ่มรอง */}
@@ -449,7 +455,6 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
                     ต้องการเพิ่มเติม
                   </div>
                 </div>
-                
               </div>
             </div>
           )}
@@ -750,7 +755,6 @@ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
           </div>
         </div>
       )}
-
     </>
   );
 };

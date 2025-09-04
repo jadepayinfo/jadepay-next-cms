@@ -53,7 +53,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // แนบไฟล์โดยใช้ fs.createReadStream
     formData.append("file", fs.createReadStream(file.filepath), filename);
 
-    console.log("fields : " , fields)
     if (fields.kyc_doc_id) {
       const kycDocIdValue = Array.isArray(fields.kyc_doc_id) ? fields.kyc_doc_id[0] : fields.kyc_doc_id;
       if (kycDocIdValue) formData.append("kyc_doc_id", kycDocIdValue);
@@ -133,7 +132,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(response.status).json(response.data);
 
   } catch (error: any) {
-    console.error("Upload API error:", error);
     res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 }

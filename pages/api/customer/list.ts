@@ -19,8 +19,6 @@ export default async function handler(
 
 
   } catch (error: any) {
-    console.log('error', error);
-    console.log('/api/v1/customer/get-list', error);
     res
       .status(500)
       .send({
