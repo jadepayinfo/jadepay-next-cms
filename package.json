@@ -24,7 +24,6 @@
     "cookies-next": "^6.1.0",
     "dayjs": "^1.11.11",
     "dotenv": "^16.4.5",
-    "exceljs": "^4.4.0",
     "export-to-csv": "^1.2.2",
     "formidable": "^3.5.4",
     "js-cookie": "^3.0.5",
@@ -47,7 +46,8 @@
     "sweetalert2-react-content": "^5.0.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "3.4.1",
-    "typescript": "5.5.2"
+    "typescript": "5.5.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",

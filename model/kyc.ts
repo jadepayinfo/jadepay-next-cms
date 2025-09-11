@@ -54,6 +54,7 @@ export interface KycInfo {
   created_at: string;
   updated_by: number;
   updated_at: string;
+  remark: string;
 }
 
 export interface KycDocument {

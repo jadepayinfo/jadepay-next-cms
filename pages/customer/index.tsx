@@ -2,14 +2,7 @@ import { NextPage } from "next";
 import withAuth from "@/hoc/with_auth";
 import Breadcrumbs from "@/components/layout/breadcrumbs";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/router";
-import {
-  IconCalendar,
-  IconCloseOutline,
-  IconEdit,
-  IconFilter,
-  IconSearch,
-} from "@/components/icon";
+import {IconCalendar, IconCloseOutline, IconEdit, IconFilter, IconSearch} from "@/components/icon";
 import InputCustom from "@/components/input/input";
 import Datepicker, { DateRangeType } from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
@@ -20,22 +13,20 @@ import { Customer } from "@/model/customer";
 import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
 import Pagination from "@/components/share/pagination";
-import {
-  Download,
-  Upload,
-  FileText,
-  X,
-  RefreshCw,
-  View,
-  UserCheck,
-} from "lucide-react";
-import ExcelJS from "exceljs"; // import exceljs
+import {Download, Upload, FileText, X, RefreshCw, View, UserCheck} from "lucide-react";
+
 import AlertSBD from "@/components/share/modal/alert_sbd";
 import axios from "axios";
+import * as XLSX from 'xlsx';
 
+import { FileCustomerUpoad } from "@/model/ict_customer_upload";
 dayjs.extend(utc);
 
 interface Props {}
+
+interface ExcelRow {
+  [key: string]: string | number | Date | null;
+}
 
 const CustomerPage: NextPage<Props> = (props) => {
   const limit = 10;
@@ -151,12 +142,12 @@ const CustomerPage: NextPage<Props> = (props) => {
 
   // Simplified file validation
   const validateFile = async (file: File): Promise<string | null> => {
-    // ตรวจสอบขนาดไฟล์ (50MB)
+    // check file size (50MB)
     if (file.size > 50 * 1024 * 1024) {
       return "ขนาดไฟล์ต้องไม่เกิน 50MB";
     }
 
-    // ตรวจสอบนามสกุลไฟล์
+    // check file extention
     const fileName = file.name.toLowerCase();
     if (
       !fileName.endsWith(".xlsx") &&
@@ -167,16 +158,29 @@ const CustomerPage: NextPage<Props> = (props) => {
     }
 
     try {
-      const workbook = new ExcelJS.Workbook();
-      const arrayBuffer = await file.arrayBuffer(); // ใช้ arrayBuffer() สำหรับไฟล์
-      await workbook.xlsx.load(arrayBuffer);
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer);
 
-      const firstSheet = workbook.worksheets[0];
-      const secondRow = firstSheet.getRow(2);
+      // เลือก sheet แรก
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
 
-      const firstCol = secondRow.getCell(1).value;
-      const secondCol = secondRow.getCell(2).value;
-      const thirdCol = secondRow.getCell(3).value;
+      // แปลงเป็น array of arrays เพื่อเข้าถึงข้อมูลได้ง่าย
+      const data = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1, // ใช้ array index แทน column names
+        defval: null, // ค่า default สำหรับ empty cells
+      });
+
+      // ตรวจสอบว่ามีข้อมูลในแถวที่ 2 (index 1)
+      const secondRow = data[1]; // แถวที่ 2 (index 1)
+
+      if (!Array.isArray(secondRow) || secondRow.length < 3) {
+        return "พบข้อมูลน้อยกว่าหรือเท่ากับ 1 แถว กรุณาตรวจสอบไฟล์อีกครั้ง";
+      }
+
+      const firstCol = secondRow[0]; // column A
+      const secondCol = secondRow[1]; // column B
+      const thirdCol = secondRow[2]; // column C
 
       if (!firstCol || !secondCol || !thirdCol) {
         return "พบข้อมูลน้อยกว่าหรือเท่ากับ 1 แถว กรุณาตรวจสอบไฟล์อีกครั้ง";
@@ -198,7 +202,6 @@ const CustomerPage: NextPage<Props> = (props) => {
     // Basic validation
     const validationError = await validateFile(uploadFile);
     if (validationError) {
-      //alert(validationError);
       AlertSBD.fire({
         icon: "error",
         titleText: validationError,
@@ -211,20 +214,67 @@ const CustomerPage: NextPage<Props> = (props) => {
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("file", uploadFile);
+      const excelData = await readExcelToJSON(uploadFile);
+      const uploadCustomers: FileCustomerUpoad[] = [];
+      excelData.forEach((row, index) => {
+        try {
+          const data: FileCustomerUpoad = {
+            name: String(row["Name"] || ""),
+            phone_number: String(row["Phone Number"] || 0),
+            Passport: String(row["Passport "] || ""),
+            dob: dayjs(row["DOB \n(MM/DD/YYYY)"]).format('YYYY-MM-DD'),
+            issue_date: dayjs(row["Issue Date "]).format('YYYY-MM-DD'),
+            expire_date: dayjs(row["Expire Date "]).format('YYYY-MM-DD'),
+            issue_country: String(row["Issue Country"] || ""),
+            gender: String(row["Gender "] || ""),
+            status: String(row["Status"] || ""),
+            email: String(row["GMAIL"] || ""),
+            selfieImg: row["Selfie"] ? String(row["Selfie"]) : null,
+            passportImg: row["Passport Photo"] ? String(row["Passport Photo"]) : null,
+            work_permitImg: row["Work Permit Photo"] ? String(row["Work Permit Photo"]) : null,
+            work_permitImg_back: row["Work Permit Back"] ? String(row["Work Permit Back"]) : null,
+            pink_card_front: row["Pink Card (Front)"] ? String(row["Pink Card (Front)"]) : null,
+            pink_card_back: row["Pink Card (Back)"] ? String(row["Pink Card (Back)"]) : null,
+            name_list: row["Name List"] ? String(row["Name List"]) : null,
+            work_permit_no: row["Work Permit"] ? String(row["Work Permit"]) : null,
+            pink_card_no: row["Pink Card "] ? String(row["Pink Card "]) : null,
+            work_permit_issue_date: dayjs(row["Issue Date _1"]).format('YYYY-MM-DD'),
+            work_permit_exprie_date: dayjs(row["Exprie Date "]).format('YYYY-MM-DD'),
+            work_permit_issue_country: String(row["Issue Country "] || ""),
+            company_name: String(row["Company Name "] || ""),
+            address: String(row["Address "] || ""),
+            town: String(row["Town"] || ""),
+            city: String(row["City"] || ""),
+            State: String(row["State"] || ""),
+            zip_code: String(row["Zip Code"] || 0),
+            Remarks: String(row["Remarks"] || ""),
+            monthly_income: String(row["Monthly Income"] || ""),
+            Nationality: String(row["Nationality "] || ""),
+            occupation: String(row["Occupation "] || ""),
+            other_occupation: String(row["Other Occupation "] || ""),
+            resident_type: String(row["Resident Type"] || "")
+          };
+          uploadCustomers.push(data);
+        } catch (error) {
+          console.error(`Error processing row ${index + 1}:`, error);
+          return
+        }
+      });
+
+      // const formData = new FormData();
+      // formData.append("file", uploadFile);
 
       // เรียก NextJS API Route
       const response = await fetch("/api/ict-partner/upload-customer", {
         method: "POST",
-        body: formData,
+        body: JSON.stringify({uploadCustomers ,  file_name: uploadFile.name,  }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // if (!response.ok) {
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
 
-      const result = await response.json();
+      // const result = await response.json();
 
       alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
 
@@ -253,6 +303,27 @@ const CustomerPage: NextPage<Props> = (props) => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
+
+  // read file to json
+const readExcelToJSON = async (file: File): Promise<ExcelRow[]> => {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, {
+    cellDates: true, // เปิดการแปลง date อัตโนมัติ
+    dateNF: 'yyyy-mm-dd' // กำหนด format วันที่
+  });
+  
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[firstSheetName];
+  
+  // ใช้ built-in conversion
+  const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+    dateNF: 'yyyy-mm-dd', // format วันที่
+    defval: null,
+    blankrows: false
+  }) as ExcelRow[];
+  
+  return jsonData;
+};
 
   // Manual refresh handler
   const handleRefresh = () => {
@@ -291,9 +362,13 @@ const CustomerPage: NextPage<Props> = (props) => {
       const response = await axios.post("/api/kyc/approve-kyc", {
         user_id: UserIdId,
       });
+
+      handleFilter()
     } catch (error) {
       alert("เกิดข้อผิดพลาดในการแก้ไข Approve");
     }
+
+
   };
 
   useEffect(() => {
@@ -505,7 +580,8 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           {item.kyc_status === "Processing" ||
                           item.kyc_status === "waiting for ict approval" ||
-                          item.kyc_status === "duplicate" ? (
+                          item.kyc_status === "duplicate" ||
+                          item.kyc_status === "kyc complete" ? (
                             <div className="w-4 h-4"></div>
                           ) : (
                             <input
@@ -563,7 +639,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                                   <View className="w-4 h-4" />
                                 </ButtonFill>
                               ) : (
-                                <ButtonFill className="px-3 py-2">
+                                <ButtonFill className="px-3 py-2 btn-warning">
                                   <IconEdit />
                                 </ButtonFill>
                               )}
@@ -571,7 +647,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                             {item.kyc_status === "duplicate" ||
                             item.kyc_status === "waiting for ict approval" ? (
                               <ButtonFill
-                                className="px-3 py-2 btn-error"
+                                className="px-3 py-2 btn-info"
                                 onClick={() =>
                                   handleApproveKYC(item.user_id, item.fullname)
                                 }
@@ -613,7 +689,7 @@ const CustomerPage: NextPage<Props> = (props) => {
             <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
               <div className="flex gap-4 items-center justify-end">
                 <ButtonFill
-                  className="btn btn-secondary btn-sm p-3 min-h-[38px]"
+                  className="btn btn-primary btn-sm p-3 min-h-[38px]"
                   type="button"
                   onClick={handleProcess}
                 >
