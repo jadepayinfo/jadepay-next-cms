@@ -8,7 +8,6 @@ export default async function handler(
   try {
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
-    console.log("req.body = ", req.body)
     const response = await Backend.post(`/api/v1/ict-partner/upload-user`, req.body, {
       headers
     });

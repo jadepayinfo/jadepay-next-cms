@@ -1,5 +1,5 @@
 export interface KycRequest {
-  person_info: KycPersonInfo; 
+  person_info: KycPersonInfo;
   address_info: KycAddressInfo;
   step: string;
 }
@@ -66,8 +66,8 @@ export interface KycDocument {
   position: string;
   doc_id_no: string;
   url: string;
-  document_no :string | null;
-  document_info:string | null;
+  document_no: string | null;
+  document_info: string | null;
   issued_date: string | null;
   expired_date: string | null;
   created_by: number;
@@ -75,10 +75,10 @@ export interface KycDocument {
   updated_by: number;
   updated_at: string;
   Action: string;
-  rotationAngle: number| null| undefined;
-  action :string | null;
+  rotationAngle: number | null | undefined;
+  action: string | null;
   ict_mapping_id: number;
-  remark:string | null;
+  remark: string | null;
   status: string | null;
   issue_country: string | null;
 }
@@ -87,6 +87,6 @@ export interface KycDocumentAction {
   kyc_doc_id: number;
   kyc_id: number;
   customer_id: number;
-  action: string| null;
+  action: string | null;
   remark: string | null;
 }

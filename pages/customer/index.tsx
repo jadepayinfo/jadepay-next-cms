@@ -2,7 +2,13 @@ import { NextPage } from "next";
 import withAuth from "@/hoc/with_auth";
 import Breadcrumbs from "@/components/layout/breadcrumbs";
 import { useEffect, useRef, useState } from "react";
-import {IconCalendar, IconCloseOutline, IconEdit, IconFilter, IconSearch} from "@/components/icon";
+import {
+  IconCalendar,
+  IconCloseOutline,
+  IconEdit,
+  IconFilter,
+  IconSearch,
+} from "@/components/icon";
 import InputCustom from "@/components/input/input";
 import Datepicker, { DateRangeType } from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
@@ -13,11 +19,19 @@ import { Customer } from "@/model/customer";
 import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
 import Pagination from "@/components/share/pagination";
-import {Download, Upload, FileText, X, RefreshCw, View, UserCheck} from "lucide-react";
+import {
+  Download,
+  Upload,
+  FileText,
+  X,
+  RefreshCw,
+  View,
+  UserCheck,
+} from "lucide-react";
 
 import AlertSBD from "@/components/share/modal/alert_sbd";
 import axios from "axios";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
 import { FileCustomerUpoad } from "@/model/ict_customer_upload";
 dayjs.extend(utc);
@@ -161,7 +175,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer);
 
-      // เลือก sheet แรก
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
 
@@ -171,14 +184,14 @@ const CustomerPage: NextPage<Props> = (props) => {
         defval: null, // ค่า default สำหรับ empty cells
       });
 
-      // ตรวจสอบว่ามีข้อมูลในแถวที่ 2 (index 1)
-      const secondRow = data[1]; // แถวที่ 2 (index 1)
+      // check row 2 (index 1)
+      const secondRow = data[1]; // row 2 (index 1)
 
       if (!Array.isArray(secondRow) || secondRow.length < 3) {
         return "พบข้อมูลน้อยกว่าหรือเท่ากับ 1 แถว กรุณาตรวจสอบไฟล์อีกครั้ง";
       }
 
-      const firstCol = secondRow[0]; // column A
+      const firstCol = secondRow[0]; // column
       const secondCol = secondRow[1]; // column B
       const thirdCol = secondRow[2]; // column C
 
@@ -222,24 +235,40 @@ const CustomerPage: NextPage<Props> = (props) => {
             name: String(row["Name"] || ""),
             phone_number: String(row["Phone Number"] || 0),
             Passport: String(row["Passport "] || ""),
-            dob: dayjs(row["DOB \n(MM/DD/YYYY)"]).format('YYYY-MM-DD'),
-            issue_date: dayjs(row["Issue Date "]).format('YYYY-MM-DD'),
-            expire_date: dayjs(row["Expire Date "]).format('YYYY-MM-DD'),
+            dob: dayjs(row["DOB \n(MM/DD/YYYY)"]).format("YYYY-MM-DD"),
+            issue_date: dayjs(row["Issue Date "]).format("YYYY-MM-DD"),
+            expire_date: dayjs(row["Expire Date "]).format("YYYY-MM-DD"),
             issue_country: String(row["Issue Country"] || ""),
             gender: String(row["Gender "] || ""),
             status: String(row["Status"] || ""),
             email: String(row["GMAIL"] || ""),
             selfieImg: row["Selfie"] ? String(row["Selfie"]) : null,
-            passportImg: row["Passport Photo"] ? String(row["Passport Photo"]) : null,
-            work_permitImg: row["Work Permit Photo"] ? String(row["Work Permit Photo"]) : null,
-            work_permitImg_back: row["Work Permit Back"] ? String(row["Work Permit Back"]) : null,
-            pink_card_front: row["Pink Card (Front)"] ? String(row["Pink Card (Front)"]) : null,
-            pink_card_back: row["Pink Card (Back)"] ? String(row["Pink Card (Back)"]) : null,
+            passportImg: row["Passport Photo"]
+              ? String(row["Passport Photo"])
+              : null,
+            work_permitImg: row["Work Permit Photo"]
+              ? String(row["Work Permit Photo"])
+              : null,
+            work_permitImg_back: row["Work Permit Back"]
+              ? String(row["Work Permit Back"])
+              : null,
+            pink_card_front: row["Pink Card (Front)"]
+              ? String(row["Pink Card (Front)"])
+              : null,
+            pink_card_back: row["Pink Card (Back)"]
+              ? String(row["Pink Card (Back)"])
+              : null,
             name_list: row["Name List"] ? String(row["Name List"]) : null,
-            work_permit_no: row["Work Permit"] ? String(row["Work Permit"]) : null,
+            work_permit_no: row["Work Permit"]
+              ? String(row["Work Permit"])
+              : null,
             pink_card_no: row["Pink Card "] ? String(row["Pink Card "]) : null,
-            work_permit_issue_date: dayjs(row["Issue Date _1"]).format('YYYY-MM-DD'),
-            work_permit_exprie_date: dayjs(row["Exprie Date "]).format('YYYY-MM-DD'),
+            work_permit_issue_date: dayjs(row["Issue Date _1"]).format(
+              "YYYY-MM-DD"
+            ),
+            work_permit_exprie_date: dayjs(row["Exprie Date "]).format(
+              "YYYY-MM-DD"
+            ),
             work_permit_issue_country: String(row["Issue Country "] || ""),
             company_name: String(row["Company Name "] || ""),
             address: String(row["Address "] || ""),
@@ -252,33 +281,22 @@ const CustomerPage: NextPage<Props> = (props) => {
             Nationality: String(row["Nationality "] || ""),
             occupation: String(row["Occupation "] || ""),
             other_occupation: String(row["Other Occupation "] || ""),
-            resident_type: String(row["Resident Type"] || "")
+            resident_type: String(row["Resident Type"] || ""),
           };
           uploadCustomers.push(data);
         } catch (error) {
           console.error(`Error processing row ${index + 1}:`, error);
-          return
+          return;
         }
       });
 
-      // const formData = new FormData();
-      // formData.append("file", uploadFile);
-
-      // เรียก NextJS API Route
       const response = await fetch("/api/ict-partner/upload-customer", {
         method: "POST",
-        body: JSON.stringify({uploadCustomers ,  file_name: uploadFile.name,  }),
+        body: JSON.stringify({ uploadCustomers, file_name: uploadFile.name }),
       });
-
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-
-      // const result = await response.json();
 
       alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
 
-      // เคลียร์ไฟล์ทันที
       clearUpload();
     } catch (error: any) {
       alert("อัปโหลดไม่สำเร็จ: " + error.message);
@@ -305,25 +323,24 @@ const CustomerPage: NextPage<Props> = (props) => {
   };
 
   // read file to json
-const readExcelToJSON = async (file: File): Promise<ExcelRow[]> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, {
-    cellDates: true, // เปิดการแปลง date อัตโนมัติ
-    dateNF: 'yyyy-mm-dd' // กำหนด format วันที่
-  });
-  
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  
-  // ใช้ built-in conversion
-  const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-    dateNF: 'yyyy-mm-dd', // format วันที่
-    defval: null,
-    blankrows: false
-  }) as ExcelRow[];
-  
-  return jsonData;
-};
+  const readExcelToJSON = async (file: File): Promise<ExcelRow[]> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, {
+      cellDates: true,
+      dateNF: "yyyy-mm-dd",
+    });
+
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+      dateNF: "yyyy-mm-dd",
+      defval: null,
+      blankrows: false,
+    }) as ExcelRow[];
+
+    return jsonData;
+  };
 
   // Manual refresh handler
   const handleRefresh = () => {
@@ -348,8 +365,7 @@ const readExcelToJSON = async (file: File): Promise<ExcelRow[]> => {
       );
       setSelectedCustomers([]);
       alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
-      // อาจจะ refresh หรือ redirect
-      handleFilter(); // refresh ข้อมูล
+      handleFilter();
     }
   };
 
@@ -363,12 +379,10 @@ const readExcelToJSON = async (file: File): Promise<ExcelRow[]> => {
         user_id: UserIdId,
       });
 
-      handleFilter()
+      handleFilter();
     } catch (error) {
       alert("เกิดข้อผิดพลาดในการแก้ไข Approve");
     }
-
-
   };
 
   useEffect(() => {
@@ -586,11 +600,9 @@ const readExcelToJSON = async (file: File): Promise<ExcelRow[]> => {
                           ) : (
                             <input
                               type="checkbox"
-                              // ใช้ checked เพื่อบอกสถานะการเลือก
                               checked={selectedCustomers.includes(
                                 item.customer_id
                               )}
-                              // ใช้ onChange เพื่อเรียกฟังก์ชันจัดการ state
                               onChange={(e) =>
                                 handleCheckboxChange(
                                   item.customer_id,
