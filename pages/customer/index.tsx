@@ -104,13 +104,13 @@ const CustomerPage: NextPage<Props> = (props) => {
     }
 
     try {
-      const res_customer_list = await Backend.get(
-        `/api/v1/customer/get-list?${params}`
+      const res_customer_list = await axios.get(
+        `/api/customer/list?${params}`
       );
+    
       const { data, count } = res_customer_list.data;
       const totalPages = Math.ceil(count / limit);
-
-      setData(data.data);
+      setData(data);
       setCount(totalPages);
       setLoading(false);
     } catch (error) {
@@ -290,10 +290,10 @@ const CustomerPage: NextPage<Props> = (props) => {
         }
       });
 
-      const response = await fetch("/api/ict-partner/upload-customer", {
-        method: "POST",
-        body: JSON.stringify({ uploadCustomers, file_name: uploadFile.name }),
-      });
+       const response = await axios.post("/api/ict-partner/upload-customer", {
+      uploadCustomers, 
+      file_name: uploadFile.name
+    });
 
       alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
 
@@ -349,13 +349,12 @@ const CustomerPage: NextPage<Props> = (props) => {
   };
 
   const handleProcess = async () => {
-    const response = await fetch("/api/ict-partner/submit-to-ict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_ids: selectedCustomers }),
+    try {
+    const response = await axios.post("/api/ict-partner/submit-to-ict", {
+      user_ids: selectedCustomers
     });
 
-    if (response.ok) {
+    if (response.status==200) {
       setData((prevData) =>
         prevData.map((item) =>
           selectedCustomers.includes(item.customer_id)
@@ -367,6 +366,10 @@ const CustomerPage: NextPage<Props> = (props) => {
       alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
       handleFilter();
     }
+    } catch (error) {
+    console.error('Submit to ICT error:', error);
+    // withAuth interceptor จะจัดการ 401/403 แล้ว
+  }
   };
 
   const handleApproveKYC = async (UserIdId: number, customerName: string) => {

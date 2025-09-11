@@ -1,29 +1,24 @@
-import axios from 'axios';
-import {
-  FunctionComponent,
-  useEffect,
-  useRef,
-  useState
-} from 'react';
-import { NextRouter, useRouter } from 'next/router';
-import Navbar from '@/components/layout/navbar';
-import { Sidebar } from '@/components/layout/sidebar';
-import Cookies from 'js-cookie';
-import { TOKEN_APP } from '@/lib/constant';
-import { StaffInfoType } from '@/model/staff_info';
-import { useAuth } from '@/context/auth_context';
-import ThemeMenu from '@/components/layout/theme_menu';
-import { Footer } from '@/components/layout/footer';
-import { Container } from '@/components/layout/container';
-import { useMenu } from '@/context/menu_context';
-import { SidebarMenuType } from '@/model/menu';
+import axios from "axios";
+import { FunctionComponent, useEffect, useRef, useState } from "react";
+import { NextRouter, useRouter } from "next/router";
+import Navbar from "@/components/layout/navbar";
+import { Sidebar } from "@/components/layout/sidebar";
+import Cookies from "js-cookie";
+import { TOKEN_APP } from "@/lib/constant";
+import { StaffInfoType } from "@/model/staff_info";
+import { useAuth } from "@/context/auth_context";
+import ThemeMenu from "@/components/layout/theme_menu";
+import { Footer } from "@/components/layout/footer";
+import { Container } from "@/components/layout/container";
+import { useMenu } from "@/context/menu_context";
+import { SidebarMenuType } from "@/model/menu";
 
 const withAuth = (WrappedComponent: FunctionComponent & any) => {
   const InApp = (props: any) => {
     const router = useRouter();
     const accessToken = useRef<string | undefined>(undefined);
     const initPage = useRef<boolean>(false);
-    
+
     // State management
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -35,13 +30,17 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
 
     // Helper function to handle auth errors
     const handleAuthError = (errorMessage: string, redirect?: string) => {
-      console.error('Auth error:', errorMessage);
+      console.error("Auth error:", errorMessage);
       setError(errorMessage);
       setIsAuthenticated(false);
       Cookies.remove(TOKEN_APP);
-      
-      const redirectUrl = redirect ? `&redirect=${redirect}` : '&redirect=/login';
-      router.push(`/error?message=${encodeURIComponent(errorMessage)}${redirectUrl}`);
+
+      const redirectUrl = redirect
+        ? `&redirect=${redirect}`
+        : "&redirect=/login";
+      router.push(
+        `/error?message=${encodeURIComponent(errorMessage)}${redirectUrl}`
+      );
     };
 
     // Verify permission with API
@@ -50,33 +49,32 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
         // const info = await axios.get(`/api/staff/info`, {
         //   timeout: 10000, // 10 second timeout
         // });
-        
+
         // console.log('Staff info:', info.data);
         // setStaff(info.data);
-        
+
         // const hasPermission = verifyMenuRole(router.pathname, info.data);
         // if (!hasPermission) {
         //   throw new Error('Permission denied');
         // }
-        
+
         return true;
-        
       } catch (error) {
-        console.error('Permission verification failed:', error);
-        
+        console.error("Permission verification failed:", error);
+
         if (axios.isAxiosError(error)) {
           if (error.response?.status === 401) {
-            throw new Error('Authentication error');
+            throw new Error("Authentication error");
           } else if (error.response?.status === 403) {
-            throw new Error('Permission denied');
-          } else if (error.code === 'ECONNABORTED') {
-            throw new Error('Request timeout');
+            throw new Error("Permission denied");
+          } else if (error.code === "ECONNABORTED") {
+            throw new Error("Request timeout");
           } else if (!error.response) {
-            throw new Error('Network error - please check your connection');
+            throw new Error("Network error - please check your connection");
           }
         }
-        
-        throw new Error('Authentication verification failed');
+
+        throw new Error("Authentication verification failed");
       }
     };
 
@@ -86,12 +84,12 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
         try {
           setIsLoading(true);
           setError(null);
-          
+
           const token = Cookies.get(TOKEN_APP);
           accessToken.current = token;
 
           if (!token) {
-            throw new Error('Authentication error');
+            throw new Error("Authentication error");
           }
 
           if (!initPage.current) {
@@ -99,16 +97,15 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
             // Verify permission
             await verifyPermission(router);
           }
-          
+
           setIsAuthenticated(true);
-          
         } catch (error: any) {
-          const errorMessage = error.message || 'Authentication error';
-          
-          if (errorMessage === 'Permission denied') {
-            handleAuthError('Permission denied');
+          const errorMessage = error.message || "Authentication error";
+
+          if (errorMessage === "Permission denied") {
+            handleAuthError("Permission denied");
           } else {
-            handleAuthError(errorMessage, '/login');
+            handleAuthError(errorMessage, "/login");
           }
         } finally {
           setIsLoading(false);
@@ -120,12 +117,65 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
 
     // Menu scroll effect
     useEffect(() => {
-      if (initMenu.current?.menuName !== currentMenu?.menuName && currentMenu?.menuName) {
+      if (
+        initMenu.current?.menuName !== currentMenu?.menuName &&
+        currentMenu?.menuName
+      ) {
         initMenu.current = currentMenu;
         const element = document.getElementById(currentMenu.menuName);
-        element?.scrollIntoView({ behavior: 'smooth' });
+        element?.scrollIntoView({ behavior: "smooth" });
       }
     }, [currentMenu?.menuName]);
+
+    useEffect(() => {
+      if (!isAuthenticated) return;
+
+      // Setup axios interceptors for global error handling
+      const responseInterceptor = axios.interceptors.response.use(
+        (response) => response,
+        (error) => {
+          // Handle 401 Unauthorized
+          if (
+            error?.response?.status === 401 ||
+            error?.response?.status === 404 ||
+            error?.response?.status === 500
+          ) {
+            console.log("Authentication error - redirecting to login");
+            setIsAuthenticated(false);
+            Cookies.remove(TOKEN_APP);
+            router.push("/login");
+            return Promise.reject(error);
+          }
+
+          // Handle 403 Forbidden
+          if (error?.response?.status === 403) {
+            console.log("Permission denied");
+            handleAuthError("Permission denied");
+            return Promise.reject(error);
+          }
+
+          return Promise.reject(error);
+        }
+      );
+
+      // Setup request interceptor to attach token
+      const requestInterceptor = axios.interceptors.request.use(
+        (config) => {
+          const token = accessToken.current || Cookies.get(TOKEN_APP);
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+          return config;
+        },
+        (error) => Promise.reject(error)
+      );
+
+      // Cleanup interceptors when component unmounts or auth changes
+      return () => {
+        axios.interceptors.response.eject(responseInterceptor);
+        axios.interceptors.request.eject(requestInterceptor);
+      };
+    }, [isAuthenticated, router, handleAuthError]); // เพิ่ม handleAuthError
 
     // Loading state
     if (isLoading) {
@@ -144,19 +194,18 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center max-w-md">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
+            <h2 className="text-2xl font-bold text-red-600 mb-4">
+              Access Denied
+            </h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <div className="flex gap-3 justify-center">
-              <button 
-                onClick={() => router.push('/login')}
+              <button
+                onClick={() => router.push("/login")}
                 className="btn btn-primary"
               >
                 Go to Login
               </button>
-              <button 
-                onClick={() => router.back()}
-                className="btn btn-outline"
-              >
+              <button onClick={() => router.back()} className="btn btn-outline">
                 Go Back
               </button>
             </div>
@@ -216,7 +265,7 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
   };
 
   // Set display name for debugging
-  InApp.displayName = `withAuth(${WrappedComponent.displayName || WrappedComponent.name || 'Component'})`;
+  InApp.displayName = `withAuth(${WrappedComponent.displayName || WrappedComponent.name || "Component"})`;
 
   return InApp;
 };
