@@ -34,6 +34,7 @@ interface DocumentRowProps {
     nationality: SelectOption[];
   };
   optionsLoaded: boolean;
+  isSelected?: boolean;
   onSaveDocument: (doc: KycDocument, rotation: number) => void;
   onOpenPopup: (docId: number) => Promise<void>;
   onApproveDocument?: (doc: KycDocument) => Promise<void>;
@@ -41,6 +42,11 @@ interface DocumentRowProps {
   onInactiveDocument?: (doc: KycDocument, reason: string) => Promise<void>;
   onReactivateDocument?: (kdoc: KycDocument) => Promise<void>;
   onRequiredDocument?: (doc: KycDocument, reason: string) => Promise<void>;
+  onSelectDoc?: (docId: number, checked: boolean) => void;
+
+  onValidateDocument?: (
+    fn: () => { isValid: boolean; errors: string[] }
+  ) => void;
 }
 
 // Helper Functions
@@ -75,6 +81,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   previewUrls,
   globalOptions,
   optionsLoaded,
+  isSelected = false,
   onSaveDocument,
   onOpenPopup,
   onApproveDocument,
@@ -82,6 +89,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   onInactiveDocument,
   onReactivateDocument,
   onRequiredDocument,
+  onSelectDoc,
+  onValidateDocument,
 }) => {
   // Refs
   const idInputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +132,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   const mappedCountry = getCountryCode(country);
   const isSelfie = docRole.includes("selfie");
-
   // Helper functions
   const getDocumentOptions = (docRole: string): SelectOption[] => {
     if (docRole.includes("primary")) return globalOptions.primary;
@@ -246,7 +254,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     }
 
     const validation = validateDocument();
-
     if (!validation.isValid) {
       alert("กรุณากรอกข้อมูลให้ครบถ้วน:\n\n" + validation.errors.join("\n"));
       return;
@@ -275,51 +282,41 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const validateDocument = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
-    // ตรวจสอบ Document Role
     if (!docRole) {
       errors.push("กรุณาเลือก Document Role");
     }
 
-    // ถ้าไม่ใช่ selfie ให้ validate field อื่นๆ
-    if (!isSelfie) {
+    if (!isSelfie && docRole !== "additional_document_mm") {
       // Document Type
       if (docType === 0) {
         errors.push("กรุณาเลือก Document Type");
       }
 
-      // Position (สำหรับเอกสารที่ต้องมี FRONT/BACK)
+      // Position
       if (!position && docRole.includes("document")) {
         errors.push("กรุณาเลือก Position");
       }
 
-      // Document No (สำหรับเอกสารที่มีเลขที่)
+      // Document No
       if (!docIdNo.trim() && docRole.includes("document")) {
         errors.push("กรุณากรอก Document No");
       }
 
-      // Issued Date (สำหรับเอกสารที่มีวันที่ออก)
+      // Issued Date
       if (!formatDate(issuedDate.startDate) && docRole.includes("document")) {
         errors.push("กรุณาเลือก Issued Date");
       }
 
-      // Expired Date (สำหรับเอกสารที่มีวันหมดอายุ)
+      // Expired Date
       if (!formatDate(expiredDate.startDate) && docRole.includes("document")) {
         errors.push("กรุณาเลือก Expired Date");
       }
 
-      // // เช็คว่า Expired Date ต้องมากกว่า Issued Date
-      // if (formatDate(issuedDate.startDate) && formatDate(expiredDate.startDate)) {
-      //   const issued = new Date(formatDate(issuedDate.startDate)!);
-      //   const expired = new Date(formatDate(expiredDate.startDate)!);
-      //   if (expired <= issued) {
-      //     errors.push("วันหมดอายุต้องมากกว่าวันที่ออกเอกสาร");
-      //   }
-      // }
       if (issue_country === "" && currentNationalityOptions.length > 0) {
         errors.push("กรุณาเลือก Issued Country");
       }
 
-      // ICT Mapping (optional แต่ถ้ามี options ก็ควรเลือก)
+      // ICT Mapping
       if (ictId === 0 && currentICTOptions.length > 0) {
         errors.push("กรุณาเลือก ICT Mapping");
       }
@@ -366,7 +363,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
     const hasChanges =
       JSON.stringify(currentData) !== JSON.stringify(originalData);
-    console.log("checkFile_Change : ", checkFile_Change);
     if (hasChanges || checkFile_Change) {
       setHasUnsavedChanges(true);
     } else {
@@ -388,19 +384,31 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     rotationAngles[doc.kyc_doc_id],
   ]);
 
+  useEffect(() => {
+    if (onValidateDocument) {
+      onValidateDocument(validateDocument);
+    }
+  }, [onValidateDocument, validateDocument]);
   return (
     <>
       <tr className="hover:bg-gray-50">
+        <td className="px-3 py-4 sticky left-0 bg-white z-10 border-r">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => onSelectDoc?.(doc.kyc_doc_id, e.target.checked)}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            disabled={doc.status === "approve"}
+          />
+        </td>
         {/* Action Buttons */}
-        <td className="px-3 py-4">
+        <td className="px-3 py-4 sticky left-12 bg-white z-10 border-r">
           {status === "approve" ? (
-            // ถ้า status = approve ให้แสดงแค่ข้อความ
             <div className="flex justify-center items-center">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {/* บรรทัดที่ 1 - ปุ่มหลัก */}
               <div className="flex gap-1 justify-center">
                 <div className="relative group">
                   <button
@@ -429,7 +437,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                 )}
               </div>
 
-              {/* บรรทัดที่ 2 - ปุ่มรอง */}
               <div className="flex gap-1 justify-center">
                 {onRejectDocument && (
                   <div className="relative group">
@@ -461,7 +468,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         </td>
 
         {/* Image */}
-        <td className="px-3 py-4 text-center">
+        <td className="px-3 py-4 text-center sticky left-28 bg-white z-10 border-r">
           {previewUrls[doc.kyc_doc_id] ? (
             <img
               src={previewUrls[doc.kyc_doc_id]}
@@ -635,7 +642,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
             onChange={(e) => setICTID(Number(e.target.value))}
-            disabled={isSelfie}
           >
             <option value="" disabled>
               ICT Mapping

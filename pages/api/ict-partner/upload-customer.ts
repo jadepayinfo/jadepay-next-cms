@@ -1,97 +1,24 @@
-import FormData from 'form-data'
-import fs from 'fs'
-import formidable from "formidable";
-import { NextApiRequest, NextApiResponse } from "next"
-import { Backend } from "@/lib/axios";
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
-const parseForm = (req: NextApiRequest) => {
-  const form = formidable();
-  return new Promise<any>(
-    function (resolve, reject) {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
-      })
-    })
-}
+import { Backend } from '@/lib/axios';
+import { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
-    const data = await parseForm(req);
-
-    const file = data.files.file?.[0];
-
-    if (!file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ไม่ได้อัปโหลดไฟล์' 
-      });
-    }
-
-    // สร้างชื่อไฟล์ใหม่
-    const newFileName = `${file.filepath}.${file.originalFilename.split('.').pop()}`;
-
-    // คัดลอกไฟล์
-    fs.copyFileSync(file.filepath, newFileName);
-
-    // เตรียม FormData สำหรับส่งต่อ
-    const formData = new FormData();
-    formData.append('file', fs.createReadStream(newFileName));
-    
-    // เพิ่ม field type ถ้ามี
-    if (data.fields?.type?.[0] != null) {
-      formData.append('type', data.fields.type[0]);
-    }
-    // เตรียม headers
-    const accessToken = req.cookies['token'];
-
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`,
-      ...formData.getHeaders()
-    };
-
-    // Generate job ID
-    const jobId = `upload_${Date.now()}`;
-    
-    // ส่งไฟล์ไป backend แบบ async (fire and forget)
-    setImmediate(async () => {
-      try {        
-        const response = await Backend.post(`/api/v1/ict-partner/upload-user`, formData, { headers });
-        
-        // ลบไฟล์ temp หลังส่งเสร็จ
-        fs.unlinkSync(newFileName);
-        
-      } catch (error: any) {
-        
-        // ลบไฟล์ temp แม้จะ error
-        try {
-          fs.unlinkSync(newFileName);
-        } catch (cleanupError) {
-        }
-      }
+    const accessToken = req.cookies['token']
+    const headers = { 'Authorization': `Bearer ${accessToken}` }
+    const response = await Backend.post(`/api/v1/ict-partner/upload-user`, req.body, {
+      headers
     });
-
-    // ตอบกลับทันที (ไม่รอ backend)
-    res.json({
-      success: true,
-      message: "File uploaded successfully and processing in background",
-      job_id: jobId,
-      status: "accepted"
-    });
+    res.json({ success: true, ...response.data.data })
 
   } catch (error: any) {
-    res.status(500).send({
-      success: false,
-      message: error.message ?? "Internal Server Error",
-    });
+    res
+      .status(500)
+      .send({
+        success: false,
+        message: error.message ?? "Internal Server Error",
+      });
   }
 }

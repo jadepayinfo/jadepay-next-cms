@@ -22,6 +22,8 @@ import ImagePopup from "./ImagePopup";
 import { KycDocument } from "@/model/kyc";
 import AlertSBD from "@/components/share/modal/alert_sbd";
 import dayjs from "dayjs";
+import MutiAreaInput from "@/components/input/muti_area_input";
+import TextareaCustom from "@/components/input/textarea";
 interface Props {
   customerInfo?: CustomerInfo;
 }
@@ -91,6 +93,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [KycRiskStatus, setKycRiskStatus] = useState(
     customerInfo?.kyc_data.kyc_data.kyc_risk_status ?? ""
   );
+  const [KycRemark, setKycRemark] = useState(
+    customerInfo?.kyc_data.kyc_data.remark ?? ""
+  );
+
 
   // DDL Nationality
   const [NationalityList, setNationalityList] = useState<SelectOption[]>([]);
@@ -479,6 +485,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         customer,
         customer_address,
         kyc_action: "save",
+        kyc_remark: KycRemark,
       });
 
       AlertSBD.fire({
@@ -809,6 +816,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         customer,
         customer_address,
         kyc_action: "approve",
+        kyc_remark: KycRemark,
       });
 
       AlertSBD.fire({
@@ -1334,7 +1342,16 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 value={KycRiskStatus}
                 onChange={(e) => setKycRiskStatus(e.target.value)}
               />
-            </div>
+            </div>   
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+              <TextareaCustom
+              title="Remark"
+              name="Deal Details"
+              value={KycRemark}
+              onChange={(e) => setKycRemark(e.target.value)}
+              rows={KycRemark ? 6 : 4}
+            />
+              </div>         
           </div>
 
           <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">

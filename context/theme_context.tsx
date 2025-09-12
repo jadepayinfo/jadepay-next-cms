@@ -34,14 +34,14 @@ export default function ThemeProvider(props: { children: React.ReactNode }) {
   const [primaryColor, setPrimaryColor] = useState<string>('');
 
   const themeNameList = new Set([
-    { name: 'sabuydee', color: '#90C8FF', isDark: true },
-    { name: 'sabuydee', color: '#1D5D9B', isDark: false },
-    { name: 'speedkub', color: '#E6564E', isDark: true },
-    { name: 'speedkub', color: '#E11d48', isDark: false },
-    { name: 'fiittoken', color: '#33A44D', isDark: true },
-    { name: 'fiittoken', color: '#33A44D', isDark: false },
-    { name: 'sabuymoney', color: '#117AEE', isDark: true },
-    { name: 'sabuymoney', color: '#117AEE', isDark: false }
+    { name: 'Navy', color: '#90C8FF', isDark: true },
+    { name: 'Navy', color: '#1D5D9B', isDark: false },
+    { name: 'Red', color: '#E6564E', isDark: true },
+    { name: 'Red', color: '#E11d48', isDark: false },
+    { name: 'Green', color: '#33A44D', isDark: true },
+    { name: 'Green', color: '#33A44D', isDark: false },
+    { name: 'Blue', color: '#117AEE', isDark: true },
+    { name: 'Blue', color: '#117AEE', isDark: false }
   ]);
 
   useEffect(() => {
@@ -96,7 +96,6 @@ export default function ThemeProvider(props: { children: React.ReactNode }) {
   const changeTheme = (name: string) => {
     const mode = isDark ? 'dark' : 'light';
     const currentTheme = `${name}_${mode}`;
-    console.log('currentTheme', currentTheme);
     if (theme !== currentTheme) {
       const mainDom = document!.getElementById('main-app');
       mainDom?.setAttribute('data-theme', currentTheme);

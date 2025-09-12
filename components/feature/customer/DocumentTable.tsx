@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { CatalogueItem } from "@/model/catalogueItem";
-import { FileText, FilePlus2 } from "lucide-react";
+import { FileText, FilePlus2, CheckCircle } from "lucide-react";
 import { KycDocument } from "@/model/kyc";
-import DocumentRow from "./DocumentRow"; // สร้างไฟล์ DocumentRow.tsx แยก
+import DocumentRow from "./DocumentRow";
 
 // Types
 type SelectOption = {
@@ -58,7 +58,6 @@ const DocumentTable: React.FC<Props> = ({
   handleReactivateDocument,
   handleRequiredDocument,
 }) => {
-  // 🚀 Global options state - เรียก API แค่ครั้งเดียว
   const [globalOptions, setGlobalOptions] = useState<{
     primary: SelectOption[];
     secondary: SelectOption[];
@@ -73,8 +72,91 @@ const DocumentTable: React.FC<Props> = ({
     nationality: [],
   });
   const [optionsLoaded, setOptionsLoaded] = useState(false);
+  // multi approve
+  const [selectedDocs, setSelectedDocs] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const validationRefs = useRef<
+    Record<number, () => { isValid: boolean; errors: string[] }>
+  >({});
 
-  // 🚀 Load options ครั้งเดียวตอน component mount
+  // handlers approve
+  const handleSelectDoc = (docId: number, checked: boolean) => {
+    const newSelected = new Set(selectedDocs);
+    if (checked) {
+      newSelected.add(docId);
+    } else {
+      newSelected.delete(docId);
+    }
+    setSelectedDocs(newSelected);
+    setSelectAll(newSelected.size === documents.length);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // Filter type approve
+      const selectableIds = new Set(
+        documents
+          .filter((doc) => doc.status !== "approve")
+          .map((doc) => doc.kyc_doc_id)
+      );
+      setSelectedDocs(selectableIds);
+      setSelectAll(checked);
+    } else {
+      setSelectedDocs(new Set());
+      setSelectAll(false);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedDocs.size === 0) {
+      alert("กรุณาเลือกเอกสารที่ต้องการอนุมัติ");
+      return;
+    }
+
+    const selectedDocuments = documents.filter((doc) =>
+      selectedDocs.has(doc.kyc_doc_id)
+    );
+    const validationResults = selectedDocuments.map((doc, index) => {
+      const validationFn = validationRefs.current[doc.kyc_doc_id];
+      return {
+        doc,
+        index,
+        validation: validationFn
+          ? validationFn()
+          : { isValid: false, errors: ["Cannot validate document"] },
+      };
+    });
+
+    const invalidDocs = validationResults.filter(
+      (result) => !result.validation.isValid
+    );
+
+    if (invalidDocs.length > 0) {
+      const errorMessages = invalidDocs.map(
+        (result) =>
+          `เอกสาร ${result.index + 1}: ${result.validation.errors.join(", ")}`
+      );
+
+      alert(
+        `ไม่สามารถอนุมัติได้ กรุณาแก้ไขข้อมูลต่อไปนี้:\n\n${errorMessages.join("\n")}`
+      );
+      return;
+    }
+
+    if (handleApproveDocument) {
+      try {
+        for (const doc of selectedDocuments) {
+          await handleApproveDocument(doc);
+        }
+        setSelectedDocs(new Set());
+        setSelectAll(false);
+        alert(`อนุมัติเอกสารสำเร็จ ${selectedDocuments.length} รายการ`);
+      } catch (error) {
+        alert("เกิดข้อผิดพลาดในการอนุมัติเอกสารบางรายการ โปรดติดต่อ admin");
+      }
+    }
+  };
+
   useEffect(() => {
     const loadGlobalOptions = async () => {
       if (optionsLoaded) return;
@@ -131,8 +213,10 @@ const DocumentTable: React.FC<Props> = ({
     <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
       {/* Header */}
       <div className="flex items-center mb-4">
-        <FileText className="w-5 h-5 text-green-600 mr-2" />
-        <h2 className="text-xl font-semibold text-gray-800">Documents</h2>
+        <div className="flex items-center">
+          <FileText className="w-5 h-5 text-green-600 mr-2" />
+          <h2 className="text-xl font-semibold text-gray-800">Documents</h2>
+        </div>
       </div>
 
       {/* Add Document Button */}
@@ -146,6 +230,16 @@ const DocumentTable: React.FC<Props> = ({
         </button>
       </div>
 
+      {selectedDocs.size > 0 && (
+        <button
+          onClick={handleBulkApprove}
+          className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+        >
+          <CheckCircle className="w-4 h-4 mr-2" />
+          Approve ({selectedDocs.size})
+        </button>
+      )}
+
       {/* Table */}
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-1 items-start">
         <div className="overflow-x-auto border border-gray-200 rounded-lg relative z-0">
@@ -155,10 +249,18 @@ const DocumentTable: React.FC<Props> = ({
           >
             <thead className="bg-gray-50 sticky top-0">
               <tr>
-                <th className="w-28 px-3 py-3 border-b font-medium text-gray-700">
+                <th className="w-12 px-3 py-3 border-b font-medium text-gray-700 sticky left-0 bg-gray-50 z-20 border-r">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
+                <th className="w-28 px-3 py-3 border-b font-medium text-gray-700 sticky left-12 bg-gray-50 z-20 border-r">
                   Action
                 </th>
-                <th className="w-32 px-3 py-3 border-b font-medium text-gray-700">
+                <th className="w-32 px-3 py-3 border-b font-medium text-gray-700 sticky left-40 bg-gray-50 z-20 border-r">
                   Image
                 </th>
                 <th className="w-40 px-3 py-3 border-b font-medium text-gray-700">
@@ -211,6 +313,11 @@ const DocumentTable: React.FC<Props> = ({
                   onInactiveDocument={handleInactiveDocument}
                   onReactivateDocument={handleReactivateDocument}
                   onRequiredDocument={handleRequiredDocument}
+                  isSelected={selectedDocs.has(doc.kyc_doc_id)}
+                  onSelectDoc={handleSelectDoc}
+                  onValidateDocument={(fn) => {
+                    validationRefs.current[doc.kyc_doc_id] = fn;
+                  }}
                 />
               ))}
             </tbody>
