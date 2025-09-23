@@ -231,15 +231,16 @@ const CustomerPage: NextPage<Props> = (props) => {
       const uploadCustomers: FileCustomerUpoad[] = [];
       excelData.forEach((row, index) => {
         try {
+          console.log("row :", row)
           const data: FileCustomerUpoad = {
             name: String(row["Name"] || ""),
             phone_number: String(row["Phone Number"] || 0),
-            Passport: String(row["Passport "] || ""),
-            dob: dayjs(row["DOB \n(MM/DD/YYYY)"]).format("YYYY-MM-DD"),
-            issue_date: dayjs(row["Issue Date "]).format("YYYY-MM-DD"),
-            expire_date: dayjs(row["Expire Date "]).format("YYYY-MM-DD"),
+            Passport: String(row["Passport"] || ""),
+            dob: dayjs(row["DOB (MM/DD/YYYY)"]).format("YYYY-MM-DD"),
+            issue_date: dayjs(row["Issue Date"]).format("YYYY-MM-DD"),
+            expire_date: dayjs(row["Expire Date"]).format("YYYY-MM-DD"),
             issue_country: String(row["Issue Country"] || ""),
-            gender: String(row["Gender "] || ""),
+            gender: String(row["Gender"] || ""),
             status: String(row["Status"] || ""),
             email: String(row["GMAIL"] || ""),
             selfieImg: row["Selfie"] ? String(row["Selfie"]) : null,
@@ -262,35 +263,36 @@ const CustomerPage: NextPage<Props> = (props) => {
             work_permit_no: row["Work Permit"]
               ? String(row["Work Permit"])
               : null,
-            pink_card_no: row["Pink Card "] ? String(row["Pink Card "]) : null,
-            work_permit_issue_date: dayjs(row["Issue Date _1"]).format(
+            pink_card_no: row["Pink Card"] ? String(row["Pink Card"]) : null,
+            work_permit_issue_date: dayjs(row["Issue Date_1"]).format(
               "YYYY-MM-DD"
             ),
-            work_permit_exprie_date: dayjs(row["Exprie Date "]).format(
+            work_permit_exprie_date: dayjs(row["Exprie Date"]).format(
               "YYYY-MM-DD"
             ),
-            work_permit_issue_country: String(row["Issue Country "] || ""),
-            company_name: String(row["Company Name "] || ""),
-            address: String(row["Address "] || ""),
+            work_permit_issue_country: String(row["Issue Country_1"] || ""),
+            company_name: String(row["Company Name"] || ""),
+            address: String(row["Address"] || ""),
             town: String(row["Town"] || ""),
             city: String(row["City"] || ""),
             State: String(row["State"] || ""),
             zip_code: String(row["Zip Code"] || 0),
             Remarks: String(row["Remarks"] || ""),
             monthly_income: String(row["Monthly Income"] || ""),
-            Nationality: String(row["Nationality "] || ""),
-            occupation: String(row["Occupation "] || ""),
-            other_occupation: String(row["Other Occupation "] || ""),
+            Nationality: String(row["Nationality"] || ""),
+            occupation: String(row["Occupation"] || ""),
+            other_occupation: String(row["Other Occupation"] || ""),
             resident_type: String(row["Resident Type"] || ""),
           };
+          console.log("data : ", data)
           uploadCustomers.push(data);
         } catch (error) {
           console.error(`Error processing row ${index + 1}:`, error);
           return;
         }
       });
-
-       const response = await axios.post("/api/ict-partner/upload-customer", {
+      
+      const response = await axios.post("/api/ict-partner/upload-customer", {
       uploadCustomers, 
       file_name: uploadFile.name
     });
@@ -328,6 +330,7 @@ const CustomerPage: NextPage<Props> = (props) => {
     const workbook = XLSX.read(arrayBuffer, {
       cellDates: true,
       dateNF: "yyyy-mm-dd",
+      raw: false,
     });
 
     const firstSheetName = workbook.SheetNames[0];
@@ -337,8 +340,9 @@ const CustomerPage: NextPage<Props> = (props) => {
       dateNF: "yyyy-mm-dd",
       defval: null,
       blankrows: false,
+      raw: false,
     }) as ExcelRow[];
-
+    console.log("jsonData : ", jsonData)
     return jsonData;
   };
 
