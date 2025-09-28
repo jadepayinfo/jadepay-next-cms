@@ -327,6 +327,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   // Status logic
   const status = doc.status;
+  const isApproved = status === "approve"; 
   const isRejected = status === "Rejected";
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -392,30 +393,30 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   return (
     <>
       <tr className="hover:bg-gray-50">
-        <td className="px-3 py-4 sticky left-0 bg-white z-10 border-r">
+        <td className="px-3 py-4 sticky left-0 bg-white z-10 border-r ">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={(e) => onSelectDoc?.(doc.kyc_doc_id, e.target.checked)}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            disabled={doc.status === "approve"}
+            disabled={isApproved}
           />
         </td>
         {/* Action Buttons */}
-        <td className="px-3 py-4 sticky left-12 bg-white z-10 border-r">
+        <td className="px-3 py-4 sticky left-12 bg-white z-10 border-r w-28">
           {status === "approve" ? (
             <div className="flex justify-center items-center">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           ) : (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full">
               <div className="flex gap-1 justify-center">
                 <div className="relative group">
                   <button
                     onClick={handleSave}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="w-3.5 h-3.5" />
                   </button>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                     บันทึกข้อมูล
@@ -426,9 +427,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                   <div className="relative group">
                     <button
                       onClick={handleApprove}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="w-3.5 h-3.5" />
                     </button>
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                       อนุมัติเอกสาร
@@ -442,9 +443,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                   <div className="relative group">
                     <button
                       onClick={openRejectModal}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <XCircle className="w-4 h-4" />
+                      <XCircle className="w-3.5 h-3.5" />
                     </button>
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                       ปฏิเสธเอกสาร
@@ -454,9 +455,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                 <div className="relative group">
                   <button
                     onClick={openRequiredModal}
-                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                    className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                   >
-                    <FileWarning className="w-4 h-4" />
+                    <FileWarning className="w-3.5 h-3.5" />
                   </button>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                     ต้องการเพิ่มเติม
@@ -468,7 +469,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         </td>
 
         {/* Image */}
-        <td className="px-3 py-4 text-center sticky left-28 bg-white z-10 border-r">
+        <td className="px-3 py-4 text-center sticky left-40 bg-white z-10 border-r w-32">
           {previewUrls[doc.kyc_doc_id] ? (
             <img
               src={previewUrls[doc.kyc_doc_id]}
@@ -507,6 +508,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={docRole}
             onChange={handleDocRoleChange}
+            disabled={isSelfie || isApproved}
           >
             <option value="" disabled>
               Document Role
@@ -528,7 +530,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className={`select select-ui w-full ${isSelfie ? "opacity-50 cursor-not-allowed" : ""}`}
             value={isSelfie ? "" : docType === 0 ? "" : String(docType)}
             onChange={(e) => setDocType(Number(e.target.value))}
-            disabled={isSelfie}
+            disabled={isSelfie || isApproved}
           >
             <option value="" disabled>
               Document Type
@@ -547,7 +549,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            disabled={isSelfie}
+            disabled={isSelfie || isApproved}
           >
             <option value="" disabled>
               Position
@@ -567,7 +569,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             value={docIdNo}
             onChange={(e) => setDocIdNo(e.target.value)}
             noWrapperMargin
-            disabled={isSelfie}
+            disabled={isSelfie || isApproved}
           />
         </td>
 
@@ -578,18 +580,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               ref={issueDateRef}
               type="date"
               className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                isSelfie
+               (isSelfie || isApproved) 
                   ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
                   : "border-[--border-color]"
               }`}
               style={
-                isSelfie
+                (isSelfie || isApproved) 
                   ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
                   : { border: "1px solid #d1d5db" }
               }
               value={formatDate(issuedDate.startDate) || ""}
               onChange={(e) => handleDateChange(e.target.value, true)}
-              disabled={isSelfie}
+              disabled={isSelfie || isApproved}
             />
           </div>
         </td>
@@ -601,18 +603,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               ref={expireDateRef}
               type="date"
               className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                isSelfie
+                (isSelfie || isApproved) 
                   ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
                   : "border-[--border-color]"
               }`}
               style={
-                isSelfie
+                (isSelfie || isApproved) 
                   ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
                   : { border: "1px solid #d1d5db" }
               }
               value={formatDate(expiredDate.startDate) || ""}
               onChange={(e) => handleDateChange(e.target.value, false)}
-              disabled={isSelfie}
+              disabled={isSelfie || isApproved}
             />
           </div>
         </td>
@@ -623,7 +625,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={issue_country === "" ? "" : issue_country}
             onChange={(e) => setIssueCountry(e.target.value)}
-            disabled={isSelfie}
+            disabled={isSelfie || isApproved}
           >
             <option value="" disabled>
               Issue Country
@@ -642,6 +644,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
             onChange={(e) => setICTID(Number(e.target.value))}
+            disabled={isSelfie || isApproved}
           >
             <option value="" disabled>
               ICT Mapping
