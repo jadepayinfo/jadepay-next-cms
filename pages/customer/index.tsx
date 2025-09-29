@@ -14,7 +14,6 @@ import Datepicker, { DateRangeType } from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import ButtonOutline from "@/components/buttons/button_outline";
-import { Backend } from "@/lib/axios";
 import { Customer } from "@/model/customer";
 import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
@@ -63,6 +62,8 @@ const CustomerPage: NextPage<Props> = (props) => {
   const [count, setCount] = useState<number>(0);
   const refPage = useRef(1);
   const [data, setData] = useState<Customer[]>([]);
+
+  
   // check bok
   const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
   const handleCheckboxChange = (customerId: number, isChecked: boolean) => {
@@ -99,7 +100,7 @@ const CustomerPage: NextPage<Props> = (props) => {
       const endDate = dayjs(dateRange.endDate).endOf("day").unix();
       params += `&registered_at_start=${startDate}&registered_at_end=${endDate}`;
     }
-    if (source) {
+    if (source !="" &&source!= "All") {      
       params += `&source=${source}`;
     }
 
@@ -282,7 +283,6 @@ const CustomerPage: NextPage<Props> = (props) => {
             other_occupation: String(row["Other Occupation"] || ""),
             resident_type: String(row["Resident Type"] || ""),
           };
-          console.log("data : ", data);
           uploadCustomers.push(data);
         } catch (error) {
           console.error(`Error processing row ${index + 1}:`, error);
@@ -529,9 +529,10 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <option value="" disabled>
                     Source
                   </option>
+                  <option value="All">All</option>
                   <option value="Online">Online</option>
                   <option value="FileUpload">FileUpload</option>
-                  <option value="FileUpload">ICT</option>
+                  <option value="ICT">ICT</option>
                 </select>
               </div>
               <div className="mt-4 grow">
@@ -622,7 +623,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>{`${item.fullname}`.trim()}</td>
                         <td>{item.email}</td>
                         <td>
-                          {dayjs(item.created_at).format("DD/MM/YYYY HH:mm:ss")}
+                          {dayjs(item.created_at).utc().format("DD/MM/YYYY")}
                         </td>
                         <td>
                           <span
@@ -720,46 +721,44 @@ const CustomerPage: NextPage<Props> = (props) => {
                   </h3>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     {/* Step 1 */}
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">
-                      1. Wait for Review
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-normal text-[12px]">
+                      1. Pannding (User entry)
                     </span>
                     <span className="text-gray-400">→</span>
-
                     {/* Step 2 */}
-                    <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full font-medium">
-                      2. Operation Review
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-normal text-[12px]">
+                      2. Wait for Review
                     </span>
                     <span className="text-gray-400">→</span>
-                    {/* Step 3 */}
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
-                      3. Approve
-                    </span>
 
-                    {/* Step 4 */}
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium">
-                      4. Processing
+                    {/* Step 3 */}
+                    <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full font-medium text-[12px]">
+                      3. Operation Review / operation save document
                     </span>
                     <span className="text-gray-400">→</span>
+                    {/* Step 4 */}
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium text-[12px]">
+                      4. Approve
+                    </span>
 
                     {/* Step 5 */}
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium">
-                      5. Waiting ICT Approval
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium text-[12px]">
+                      5. Processing
                     </span>
                     <span className="text-gray-400">→</span>
 
                     {/* Step 6 */}
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
-                      6. kyc complete
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium text-[12px]">
+                      6. Waiting ICT Approval
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 7 */}
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium text-[12px]">
+                      7. KYC complete
                     </span>
                   </div>
 
-                  {/* Special Status */}
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    <span className="text-gray-600">Special Status:</span>
-                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full font-medium">
-                      Duplicate
-                    </span>
-                  </div>
                 </div>
 
                 {/* Action Button */}
