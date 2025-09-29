@@ -51,7 +51,24 @@ type SelectOption = {
   value: number;
   label: string;
 };
-
+type ResidentialOption = {
+  value: string;
+  label: string;
+};
+const residentialTypeOption: ResidentialOption[] = [
+  {
+    value: "Tourist",
+    label: "Tourist",
+  },
+  {
+    value: "Resident",
+    label: "Resident",
+  },
+  {
+    value: "Workpermit",
+    label: "Workpermit",
+  },
+];
 const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const router = useRouter();
   const initPage = useRef<boolean>(false);
@@ -81,9 +98,15 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [Marital, setMarital] = useState(
     customerInfo?.customer_data?.customer?.marital ?? ""
   );
-  const [Residential, setResidential] = useState(
-    customerInfo?.customer_data?.customer?.residential ?? ""
+
+  const [Residential, setResidential] = useState<
+    ResidentialOption | undefined | null
+  >(
+    residentialTypeOption.find(
+      (i) => i?.value == customerInfo?.customer_data?.customer?.residential
+    )
   );
+
   const [KycLevel, setKycLevel] = useState(
     customerInfo?.kyc_data.kyc_data.kyc_level ?? ""
   );
@@ -96,7 +119,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [KycRemark, setKycRemark] = useState(
     customerInfo?.kyc_data.kyc_data.remark ?? ""
   );
-
 
   // DDL Nationality
   const [NationalityList, setNationalityList] = useState<SelectOption[]>([]);
@@ -423,7 +445,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           : null,
         gender: Gender,
         marital: Marital,
-        residential: Residential,
+        residential: Residential?.value || "",
         occupation: Occupation?.value ? Number(Occupation.value) : 0,
         income: MonthlyIncome?.value ? Number(MonthlyIncome.value) : 0,
         active: true,
@@ -697,33 +719,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       alert("ส่งคำขอเอกสารเพิ่มเติมไม่สำเร็จ");
     }
   };
-  // 6. Handler สำหรับ Selfe
-  const handleSelfieAction = () => {
-    const selfieDocId = selfeIMG ?? 0;
-
-    // ถ้ามี preview file ใหม่ ให้ save
-    if (previewUrls[selfieDocId]) {
-      // ใช้ Partial เพื่อให้ส่งแค่ fields ที่จำเป็น
-      const selfieDoc: Partial<KycDocument> & Pick<KycDocument, "kyc_doc_id"> =
-        {
-          kyc_doc_id: selfieDocId,
-          kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id ?? 0,
-          user_id: customerInfo?.customer_data.customer.user_id ?? 0,
-          doc_type: "SELFIE",
-          doctype_id: 310,
-          document_info: "Selfie",
-          action: "approve",
-          rotationAngle: rotationAngles[selfieDocId] || 0,
-          position: "FRONT",
-        };
-
-      const rotation = rotationAngles[selfieDocId] || 0;
-      handleSaveDocument(selfieDoc as KycDocument, rotation);
-    } else {
-      // ถ้ายังไม่มีไฟล์ ให้เปิด popup เพื่อ upload
-      openPopup(selfieDocId);
-    }
-  };
+  
   const handleCancel = () => {
     router.replace("/customer");
   };
@@ -747,7 +743,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           : null,
         gender: Gender,
         marital: Marital,
-        residential: Residential,
+        residential: Residential?.value || "",
         occupation: Occupation?.value ? Number(Occupation.value) : 0,
         income: MonthlyIncome?.value ? Number(MonthlyIncome.value) : 0,
         active: true,
@@ -822,7 +818,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `Approe customer information`,
+        text: `Approve customer information`,
         showConfirmButton: false,
       }).then(() => {
         router.replace("/customer");
@@ -840,6 +836,29 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       setLoading(false);
     }
   };
+
+  //checked    
+  const [useSameAddress, setUseSameAddress] = useState(false);
+  const handleUseSameAddress = (checked: boolean) => {
+  setUseSameAddress(checked);
+  
+  if (checked) {
+    // Copy ข้อมูลจาก Work ไป Contact
+    setContactAddress(WorkAddress);
+    setContactSubDistrict(WorkSubDistrict);
+    setContactCity(WorkCity);
+    setContactState(WorkState);
+    setContactZipcode(WorkZipcode);
+  } else {
+    // Clear Contact Address เมื่อ uncheck
+    setContactAddress("");
+    setContactSubDistrict("");
+    setContactCity("");
+    setContactState("");
+    setContactZipcode("");
+  }
+};
+
   useEffect(() => {
     const getLoadData = async () => {
       try {
@@ -936,9 +955,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   useEffect(() => {
     const kycStatus = customerInfo?.kyc_data?.kyc_data?.kyc_status;
     if (
-      kycStatus === "approved" ||
+      kycStatus === "Approve" ||
       kycStatus === "duplicate" ||
-      kycStatus === "waiting for ict approval"
+      kycStatus === "waiting for ict approval" ||
+      kycStatus === "kyc complete"
     ) {
       setIsFormDisabled(true);
     } else {
@@ -1302,56 +1322,61 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 </div>
               </div>
               <div className="flex flex-col ">
+                <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
+                  Resident Type
+                </div>
+                <div className="rounded-md relative w-full force-light-background">
+                  <Select
+                    className="mt-1"
+                    classNamePrefix="select-custom"
+                    instanceId="level-control"
+                    placeholder={
+                      <div tw="flex items-center gap-2">
+                        <span>Residential Type</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </div>
+                    }
+                    options={residentialTypeOption}
+                    defaultValue={Residential}
+                    value={Residential}
+                    onChange={(item) => setResidential(item)}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col mt-4">
                 <InputCustom
-                  name="residential"
-                  title="Resident Type"
+                  name="KYC score"
+                  title="KYC Score"
                   type="text"
-                  placeholder="residential"
-                  value={Residential}
-                  onChange={(e) => setResidential(e.target.value)}
-                  required
+                  placeholder="KYC Score"
+                  readOnly
+                  disabled={true}
+                  value={KycScore}
+                  onChange={(e) => setKycScore(e.target.value)}
                 />
               </div>
-              <InputCustom
-                name="KYC level"
-                title="KYC Level"
-                type="text"
-                placeholder="kyc level"
-                value={KycLevel}
-                readOnly
-                disabled={true}
-                onChange={(e) => setKycLevel(e.target.value)}
-              />
-              <InputCustom
-                name="Kyc score"
-                title="Kyc Score"
-                type="text"
-                placeholder="Kyc Score"
-                readOnly
-                disabled={true}
-                value={KycScore}
-                onChange={(e) => setKycScore(e.target.value)}
-              />
-              <InputCustom
-                name="Kyc risk status"
-                title="Kyc risk status"
-                type="text"
-                placeholder="Kyc risk status"
-                readOnly
-                disabled={true}
-                value={KycRiskStatus}
-                onChange={(e) => setKycRiskStatus(e.target.value)}
-              />
-            </div>   
+              <div className="flex flex-col mt-4">
+                <InputCustom
+                  name="KYC risk status"
+                  title="KYC risk status"
+                  type="text"
+                  placeholder="KYC risk status"
+                  readOnly
+                  disabled={true}
+                  value={KycRiskStatus}
+                  onChange={(e) => setKycRiskStatus(e.target.value)}
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
               <TextareaCustom
-              title="Remark"
-              name="Deal Details"
-              value={KycRemark}
-              onChange={(e) => setKycRemark(e.target.value)}
-              rows={KycRemark ? 6 : 4}
-            />
-              </div>         
+                title="Remark"
+                name="Deal Details"
+                value={KycRemark}
+                onChange={(e) => setKycRemark(e.target.value)}
+                rows={KycRemark ? 6 : 4}
+              />
+            </div>
           </div>
 
           <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
@@ -1420,7 +1445,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 required
               />
             </div>
-
+            <input type="checkbox"  checked={useSameAddress} onChange={(e) => handleUseSameAddress(e.target.checked)}/> 
+            <span className="label-text ml-2 ">Use the same information as work address</span>
             <div className="flex items-center justify-between text-lg">
               <div>Contact Detail</div>
             </div>

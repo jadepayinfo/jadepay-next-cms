@@ -104,10 +104,8 @@ const CustomerPage: NextPage<Props> = (props) => {
     }
 
     try {
-      const res_customer_list = await axios.get(
-        `/api/customer/list?${params}`
-      );
-    
+      const res_customer_list = await axios.get(`/api/customer/list?${params}`);
+
       const { data, count } = res_customer_list.data;
       const totalPages = Math.ceil(count / limit);
       setData(data);
@@ -231,15 +229,16 @@ const CustomerPage: NextPage<Props> = (props) => {
       const uploadCustomers: FileCustomerUpoad[] = [];
       excelData.forEach((row, index) => {
         try {
+          console.log("row :", row);
           const data: FileCustomerUpoad = {
             name: String(row["Name"] || ""),
             phone_number: String(row["Phone Number"] || 0),
-            Passport: String(row["Passport "] || ""),
-            dob: dayjs(row["DOB \n(MM/DD/YYYY)"]).format("YYYY-MM-DD"),
-            issue_date: dayjs(row["Issue Date "]).format("YYYY-MM-DD"),
-            expire_date: dayjs(row["Expire Date "]).format("YYYY-MM-DD"),
+            Passport: String(row["Passport"] || ""),
+            dob: dayjs(row["DOB (MM/DD/YYYY)"]).format("YYYY-MM-DD"),
+            issue_date: dayjs(row["Issue Date"]).format("YYYY-MM-DD"),
+            expire_date: dayjs(row["Expire Date"]).format("YYYY-MM-DD"),
             issue_country: String(row["Issue Country"] || ""),
-            gender: String(row["Gender "] || ""),
+            gender: String(row["Gender"] || ""),
             status: String(row["Status"] || ""),
             email: String(row["GMAIL"] || ""),
             selfieImg: row["Selfie"] ? String(row["Selfie"]) : null,
@@ -262,27 +261,28 @@ const CustomerPage: NextPage<Props> = (props) => {
             work_permit_no: row["Work Permit"]
               ? String(row["Work Permit"])
               : null,
-            pink_card_no: row["Pink Card "] ? String(row["Pink Card "]) : null,
-            work_permit_issue_date: dayjs(row["Issue Date _1"]).format(
+            pink_card_no: row["Pink Card"] ? String(row["Pink Card"]) : null,
+            work_permit_issue_date: dayjs(row["Issue Date_1"]).format(
               "YYYY-MM-DD"
             ),
-            work_permit_exprie_date: dayjs(row["Exprie Date "]).format(
+            work_permit_exprie_date: dayjs(row["Exprie Date"]).format(
               "YYYY-MM-DD"
             ),
-            work_permit_issue_country: String(row["Issue Country "] || ""),
-            company_name: String(row["Company Name "] || ""),
-            address: String(row["Address "] || ""),
+            work_permit_issue_country: String(row["Issue Country_1"] || ""),
+            company_name: String(row["Company Name"] || ""),
+            address: String(row["Address"] || ""),
             town: String(row["Town"] || ""),
             city: String(row["City"] || ""),
             State: String(row["State"] || ""),
             zip_code: String(row["Zip Code"] || 0),
             Remarks: String(row["Remarks"] || ""),
             monthly_income: String(row["Monthly Income"] || ""),
-            Nationality: String(row["Nationality "] || ""),
-            occupation: String(row["Occupation "] || ""),
-            other_occupation: String(row["Other Occupation "] || ""),
+            Nationality: String(row["Nationality"] || ""),
+            occupation: String(row["Occupation"] || ""),
+            other_occupation: String(row["Other Occupation"] || ""),
             resident_type: String(row["Resident Type"] || ""),
           };
+          console.log("data : ", data);
           uploadCustomers.push(data);
         } catch (error) {
           console.error(`Error processing row ${index + 1}:`, error);
@@ -290,10 +290,10 @@ const CustomerPage: NextPage<Props> = (props) => {
         }
       });
 
-       const response = await axios.post("/api/ict-partner/upload-customer", {
-      uploadCustomers, 
-      file_name: uploadFile.name
-    });
+      const response = await axios.post("/api/ict-partner/upload-customer", {
+        uploadCustomers,
+        file_name: uploadFile.name,
+      });
 
       alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
 
@@ -328,6 +328,7 @@ const CustomerPage: NextPage<Props> = (props) => {
     const workbook = XLSX.read(arrayBuffer, {
       cellDates: true,
       dateNF: "yyyy-mm-dd",
+      raw: false,
     });
 
     const firstSheetName = workbook.SheetNames[0];
@@ -337,8 +338,9 @@ const CustomerPage: NextPage<Props> = (props) => {
       dateNF: "yyyy-mm-dd",
       defval: null,
       blankrows: false,
+      raw: false,
     }) as ExcelRow[];
-
+    console.log("jsonData : ", jsonData);
     return jsonData;
   };
 
@@ -350,26 +352,26 @@ const CustomerPage: NextPage<Props> = (props) => {
 
   const handleProcess = async () => {
     try {
-    const response = await axios.post("/api/ict-partner/submit-to-ict", {
-      user_ids: selectedCustomers
-    });
+      const response = await axios.post("/api/ict-partner/submit-to-ict", {
+        user_ids: selectedCustomers,
+      });
 
-    if (response.status==200) {
-      setData((prevData) =>
-        prevData.map((item) =>
-          selectedCustomers.includes(item.customer_id)
-            ? { ...item, kyc_status: "Processing" }
-            : item
-        )
-      );
-      setSelectedCustomers([]);
-      alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
-      handleFilter();
-    }
+      if (response.status == 200) {
+        setData((prevData) =>
+          prevData.map((item) =>
+            selectedCustomers.includes(item.customer_id)
+              ? { ...item, kyc_status: "Processing" }
+              : item
+          )
+        );
+        setSelectedCustomers([]);
+        alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
+        handleFilter();
+      }
     } catch (error) {
-    console.error('Submit to ICT error:', error);
-    // withAuth interceptor จะจัดการ 401/403 แล้ว
-  }
+      console.error("Submit to ICT error:", error);
+      // withAuth interceptor จะจัดการ 401/403 แล้ว
+    }
   };
 
   const handleApproveKYC = async (UserIdId: number, customerName: string) => {
@@ -529,6 +531,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                   </option>
                   <option value="Online">Online</option>
                   <option value="FileUpload">FileUpload</option>
+                  <option value="FileUpload">ICT</option>
                 </select>
               </div>
               <div className="mt-4 grow">
@@ -650,11 +653,17 @@ const CustomerPage: NextPage<Props> = (props) => {
                               item.kyc_status === "duplicate" ||
                               item.kyc_status === "waiting for ict approval" ||
                               item.kyc_status === "kyc complete" ? (
-                                <ButtonFill className="px-3 py-2 btn-primary ">
+                                <ButtonFill
+                                  className="px-3 py-2 btn-primary"
+                                  title="View Details"
+                                >
                                   <View className="w-4 h-4" />
                                 </ButtonFill>
                               ) : (
-                                <ButtonFill className="px-3 py-2 btn-warning">
+                                <ButtonFill
+                                  className="px-3 py-2 btn-warning"
+                                  title="Edit Customer"
+                                >
                                   <IconEdit />
                                 </ButtonFill>
                               )}
@@ -666,6 +675,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                                 onClick={() =>
                                   handleApproveKYC(item.user_id, item.fullname)
                                 }
+                                title="Approve KYC"
                               >
                                 <UserCheck className="w-4 h-4" />
                               </ButtonFill>
@@ -702,17 +712,69 @@ const CustomerPage: NextPage<Props> = (props) => {
             </div>
 
             <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
-              <div className="flex gap-4 items-center justify-end">
-                <ButtonFill
-                  className="btn btn-primary btn-sm p-3 min-h-[38px]"
-                  type="button"
-                  onClick={handleProcess}
-                >
-                  {"send to ICT"}
-                  {loading && (
-                    <span className="ml-1 loading loading-spinner"></span>
-                  )}
-                </ButtonFill>
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                {/* KYC Status Flow */}
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    KYC Status Flow:
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {/* Step 1 */}
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">
+                      1. Wait for Review
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 2 */}
+                    <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full font-medium">
+                      2. Operation Review
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    {/* Step 3 */}
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                      3. Approve
+                    </span>
+
+                    {/* Step 4 */}
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium">
+                      4. Processing
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 5 */}
+                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium">
+                      5. Waiting ICT Approval
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 6 */}
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                      6. kyc complete
+                    </span>
+                  </div>
+
+                  {/* Special Status */}
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="text-gray-600">Special Status:</span>
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full font-medium">
+                      Duplicate
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="flex gap-4 items-center">
+                  <ButtonFill
+                    className="btn btn-primary btn-sm p-3 min-h-[38px]"
+                    type="button"
+                    onClick={handleProcess}
+                  >
+                    {"send to ICT"}
+                    {loading && (
+                      <span className="ml-1 loading loading-spinner"></span>
+                    )}
+                  </ButtonFill>
+                </div>
               </div>
             </div>
           </div>
