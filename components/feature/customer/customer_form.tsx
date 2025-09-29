@@ -513,7 +513,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `You have successfully.`,
+        text: `You Your changes have been saved successfully.`,
         showConfirmButton: false,
       });
     } catch (err: any) {
@@ -595,13 +595,15 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     reason: string
   ) => {
     try {
-      const response = await axios.post("/api/kyc/set-action-document", {
-        kyc_doc_id: document.kyc_doc_id,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
-        action: "reject",
-        customer_id: document.user_id,
-        remark: reason,
-      });
+      if (document.kyc_doc_id!=0) {
+        const response = await axios.post("/api/kyc/set-action-document", {
+          kyc_doc_id: document.kyc_doc_id,
+          kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+          action: "reject",
+          customer_id: document.user_id,
+          remark: reason,
+        });
+      }     
 
       // อัปเดต documents state
       setDocuments((prev) =>
@@ -1078,7 +1080,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.created_at
-                  ? dayjs(kyc.created_at).format("DD/MM/YYYY HH:mm:ss")
+                  ? dayjs(kyc.created_at).utc().format("DD/MM/YYYY")
                   : ""}
               </p>
             </div>
@@ -1098,8 +1100,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.operation_approve_at
-                  ? dayjs(kyc.operation_approve_at).format(
-                      "DD/MM/YYYY HH:mm:ss"
+                  ? dayjs(kyc.operation_approve_at).utc().format(
+                      "DD/MM/YYYY"
                     )
                   : ""}
               </p>
@@ -1111,7 +1113,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.ict_approve_at
-                  ? dayjs(kyc.ict_approve_at).format("DD/MM/YYYY HH:mm:ss")
+                  ? dayjs(kyc.ict_approve_at).utc().format("DD/MM/YYYY")
                   : ""}
               </p>
             </div>

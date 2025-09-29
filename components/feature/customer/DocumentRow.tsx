@@ -99,10 +99,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   // Modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showInactiveModal, setShowInactiveModal] = useState(false);
   const [showRequiredModal, setShowRequiredModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [inactiveReason, setInactiveReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
 
   // Document states
@@ -327,10 +325,12 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   // Status logic
   const status = doc.status;
-  const isApproved = status === "approve"; 
-  const isRejected = status === "Rejected";
+  const isApproved = status === "approve";
+  const isRejected = status === "reject";
 
+  console.log("isRejected : ", isRejected);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const checkForChanges = () => {
     // check File
     let checkFile_Change = false;
@@ -366,12 +366,22 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       JSON.stringify(currentData) !== JSON.stringify(originalData);
     if (hasChanges || checkFile_Change) {
       setHasUnsavedChanges(true);
+      clearcontrol();
     } else {
       setHasUnsavedChanges(false);
     }
-
     return hasChanges;
   };
+
+  const clearcontrol = () => {
+    setDocType(0);
+    setDocIdNo("");
+    setPosition("");
+    const dateTemp = new Date("");
+    setIssuedDate(initStartDate(dateTemp.getTime() / 1000));
+    setExpiredDate(initStartDate(dateTemp.getTime() / 1000));
+  };
+
   useEffect(() => {
     checkForChanges();
   }, [
@@ -390,6 +400,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       onValidateDocument(validateDocument);
     }
   }, [onValidateDocument, validateDocument]);
+
   return (
     <>
       <tr className="hover:bg-gray-50">
@@ -399,7 +410,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             checked={isSelected}
             onChange={(e) => onSelectDoc?.(doc.kyc_doc_id, e.target.checked)}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            disabled={isApproved}
+            disabled={isApproved || isRejected}
           />
         </td>
         {/* Action Buttons */}
@@ -414,7 +425,12 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                 <div className="relative group">
                   <button
                     onClick={handleSave}
-                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    disabled={!hasUnsavedChanges || isRejected}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      hasUnsavedChanges
+                        ? "text-blue-600 hover:bg-blue-50 cursor-pointer"
+                        : "text-gray-400 cursor-not-allowed opacity-50"
+                    }`}
                   >
                     <Save className="w-3.5 h-3.5" />
                   </button>
@@ -427,7 +443,13 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                   <div className="relative group">
                     <button
                       onClick={handleApprove}
-                      className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      // className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      disabled={isApproved || isRejected}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isApproved || !isRejected
+                          ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed opacity-50"
+                      }`}
                     >
                       <CheckCircle className="w-3.5 h-3.5" />
                     </button>
@@ -508,7 +530,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={docRole}
             onChange={handleDocRoleChange}
-            disabled={isSelfie || isApproved}
+            disabled={isApproved}
           >
             <option value="" disabled>
               Document Role
@@ -580,12 +602,12 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               ref={issueDateRef}
               type="date"
               className={`relative w-full flex items-center border py force-light-background rounded-md ${
-               (isSelfie || isApproved) 
+                isSelfie || isApproved
                   ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
                   : "border-[--border-color]"
               }`}
               style={
-                (isSelfie || isApproved) 
+                isSelfie || isApproved
                   ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
                   : { border: "1px solid #d1d5db" }
               }
@@ -603,12 +625,12 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               ref={expireDateRef}
               type="date"
               className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                (isSelfie || isApproved) 
+                isSelfie || isApproved
                   ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
                   : "border-[--border-color]"
               }`}
               style={
-                (isSelfie || isApproved) 
+                isSelfie || isApproved
                   ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
                   : { border: "1px solid #d1d5db" }
               }
