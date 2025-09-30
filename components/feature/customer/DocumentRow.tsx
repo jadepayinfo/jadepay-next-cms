@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Info,
   FileWarning,
+  Trash2
 } from "lucide-react";
 import { KycDocument } from "@/model/kyc";
 
@@ -210,6 +211,15 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     }
   };
 
+  const onDeleteRow = async () => {
+      if (onRejectDocument) {
+      try {
+        await onRejectDocument(doc, "");
+        closeRejectModal();
+      } catch (error) {}
+    }
+  }
+
   const openRequiredModal = () => {
     setShowRequiredModal(true);
   };
@@ -268,7 +278,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
           issued_date: formatDate(issuedDate.startDate),
           expired_date: formatDate(expiredDate.startDate),
           ict_mapping_id: ictId,
-          status: "approve",
+          status: "approved",
         };
 
         await onApproveDocument(updated);
@@ -325,17 +335,17 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   // Status logic
   const status = doc.status;
-  const isApproved = status === "approve";
+  console.log("doc.status : ",doc.status)
+  const isApproved = status === "approved";
   const isRejected = status === "reject";
 
-  console.log("isRejected : ", isRejected);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const checkForChanges = () => {
     // check File
     let checkFile_Change = false;
-    if (rotationAngles[doc.kyc_doc_id] != 0) {
-      checkFile_Change = false;
+    if (rotationAngles[doc.kyc_doc_id] != 0 && rotationAngles[doc.kyc_doc_id]!= undefined) {
+      checkFile_Change = true;
     }
 
     //check control
@@ -366,7 +376,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       JSON.stringify(currentData) !== JSON.stringify(originalData);
     if (hasChanges || checkFile_Change) {
       setHasUnsavedChanges(true);
-      clearcontrol();
+    //  clearcontrol();
     } else {
       setHasUnsavedChanges(false);
     }
@@ -415,7 +425,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         </td>
         {/* Action Buttons */}
         <td className="px-3 py-4 sticky left-12 bg-white z-10 border-r w-28">
-          {status === "approve" ? (
+          {status === "approved" ? (
             <div className="flex justify-center items-center">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
@@ -462,10 +472,17 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
               <div className="flex gap-1 justify-center">
                 {onRejectDocument && (
+                  doc.kyc_doc_id !== 0 ?(
                   <div className="relative group">
                     <button
                       onClick={openRejectModal}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      // className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={isApproved || isRejected}
+                       className={`p-1.5 rounded-lg transition-colors ${
+                        isApproved || !isRejected
+                          ? "text-red-600 hover:bg-red-50 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed opacity-50"
+                      }`}
                     >
                       <XCircle className="w-3.5 h-3.5" />
                     </button>
@@ -473,11 +490,31 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                       ปฏิเสธเอกสาร
                     </div>
                   </div>
-                )}
+                ):(
+                   <div className="relative group">
+                    <button
+                      onClick={onDeleteRow}
+                      // className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={isApproved || isRejected}
+                       className={`p-1.5 rounded-lg transition-colors text-red-600 hover:bg-red-50 cursor-pointer`}                   
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      ลบแถว
+                    </div>
+                  </div>
+                ))}
                 <div className="relative group">
                   <button
                     onClick={openRequiredModal}
-                    className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                    // className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                    disabled={isApproved || isRejected}
+                     className={`p-1.5 rounded-lg transition-colors ${
+                        isApproved || !isRejected
+                          ? "text-orange-600 hover:bg-orange-50 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed opacity-50"
+                      }`}
                   >
                     <FileWarning className="w-3.5 h-3.5" />
                   </button>
@@ -685,7 +722,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className={`px-2 py-1 text-xs rounded-full font-medium ${
               status === "review"
                 ? "bg-yellow-100 text-yellow-800"
-                : status === "approve"
+                : status === "Approved by Jadepay"
                   ? "bg-green-100 text-green-800"
                   : status === "reject"
                     ? "bg-red-100 text-red-800"
