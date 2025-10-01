@@ -55,7 +55,7 @@ const CustomerPage: NextPage<Props> = (props) => {
   const [filterName, setFilterName] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRangeType>(initDateRange());
   const [source, setSource] = useState("");
-
+  const [status, setStatus] = useState("");
   // Table states
   const [isFillForm, setIsFillForm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -102,6 +102,9 @@ const CustomerPage: NextPage<Props> = (props) => {
     }
     if (source !="" &&source!= "All") {      
       params += `&source=${source}`;
+    }
+    if (status !="" &&status!= "All") {      
+      params += `&status=${status}`;
     }
 
     try {
@@ -536,6 +539,25 @@ const CustomerPage: NextPage<Props> = (props) => {
                 </select>
               </div>
               <div className="mt-4 grow">
+                <select
+                  className="select select-ui w-full"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Status
+                  </option>
+                  <option value="All">All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Wait for review">Waiting for review</option>
+                  <option value="Operation save">Operation save</option>
+                  <option value="Approved by Jadepay">Approved by Jadepay</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Waiting for ICT Approval">Waiting for ICT Approval</option>
+                  <option value="KYC completed">KYC completed</option>
+                </select>
+              </div>
+              <div className="mt-4 grow">
                 <div className="date-box relative w-full border border-[--border-color] rounded-md">
                   <Datepicker
                     showShortcuts={true}
@@ -600,9 +622,9 @@ const CustomerPage: NextPage<Props> = (props) => {
                       <tr key={index} className="hover border-[--border-color]">
                         <td>
                           {item.kyc_status === "Processing" ||
-                          item.kyc_status === "waiting for ict approval" ||
+                          item.kyc_status === "Waiting for ICT approval" ||
                           item.kyc_status === "duplicate" ||
-                          item.kyc_status === "kyc complete" ? (
+                          item.kyc_status === "KYC complete" ? (
                             <div className="w-4 h-4"></div>
                           ) : (
                             <input
@@ -628,19 +650,14 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.kyc_status === "Approve" ||
-                              item.kyc_status === "kyc complete"
-                                ? "bg-green-100 text-green-800"
-                                : item.kyc_status === "Pending" ||
-                                    item.kyc_status === "Processing" ||
-                                    item.kyc_status ===
-                                      "waiting for ict approval"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : item.kyc_status === "Review"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : item.kyc_status === "duplicate"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
+                              item.kyc_status === "Waiting for review" ? "bg-yellow-100 text-gray-700":
+                              item.kyc_status === "Operation Save" ? "bg-green-100 text-gray-800":
+                              item.kyc_status === "Approved by Jadepay" ? "bg-green-200 text-gray-800":
+                              item.kyc_status === "Processing" ? "bg-blue-100 text-gray-800":
+                              item.kyc_status === "Waiting for ICT Approval" ? "bg-blue-200 text-gray-800":
+                              item.kyc_status === "KYC completed" ? "bg-blue-900 text-white":
+                              item.kyc_status === "Reject" || item.kyc_status === "duplicate"  ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {item.kyc_status}
@@ -650,10 +667,10 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <div className="flex gap-2">
                             <Link href={`/customer/edit/${item.customer_id}`}>
-                              {item.kyc_status === "Approve" ||
+                              {item.kyc_status === "Approved by Jadepay" ||
                               item.kyc_status === "duplicate" ||
-                              item.kyc_status === "waiting for ict approval" ||
-                              item.kyc_status === "kyc complete" ? (
+                              item.kyc_status === "Waiting for ICT Approval" ||
+                              item.kyc_status === "KYC Completed" ? (
                                 <ButtonFill
                                   className="px-3 py-2 btn-primary"
                                   title="View Details"
@@ -670,13 +687,13 @@ const CustomerPage: NextPage<Props> = (props) => {
                               )}
                             </Link>
                             {item.kyc_status === "duplicate" ||
-                            item.kyc_status === "waiting for ict approval" ? (
+                            item.kyc_status === "Waiting for ICT Approval" ? (
                               <ButtonFill
                                 className="px-3 py-2 btn-info"
                                 onClick={() =>
                                   handleApproveKYC(item.user_id, item.fullname)
                                 }
-                                title="Approve KYC"
+                                title="Approved KYC"
                               >
                                 <UserCheck className="w-4 h-4" />
                               </ButtonFill>
@@ -722,40 +739,40 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     {/* Step 1 */}
                     <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-normal text-[12px]">
-                      1. Pannding (User entry)
+                      1. Pending (User entry)
                     </span>
                     <span className="text-gray-400">→</span>
                     {/* Step 2 */}
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-normal text-[12px]">
-                      2. Wait for Review
+                    <span className="px-3 py-1 bg-yellow-100 text-gray-700 rounded-full font-normal text-[12px]">
+                      2. Waiting for review
                     </span>
                     <span className="text-gray-400">→</span>
 
                     {/* Step 3 */}
-                    <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full font-medium text-[12px]">
-                      3. Operation Review / operation save document
+                    <span className="px-3 py-1 bg-green-100 text-gray-800 rounded-full font-medium text-[12px]">
+                      3. Operation Save
                     </span>
                     <span className="text-gray-400">→</span>
                     {/* Step 4 */}
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium text-[12px]">
-                      4. Approve
+                    <span className="px-3 py-1 bg-green-200 text-green-800 rounded-full font-medium text-[12px]">
+                      4. Approved by Jadepay
                     </span>
-
+                    <span className="text-gray-400">→</span>
                     {/* Step 5 */}
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium text-[12px]">
+                    <span className="px-3 py-1 bg-blue-100 text-yellow-800 rounded-full font-medium text-[12px]">
                       5. Processing
                     </span>
                     <span className="text-gray-400">→</span>
 
                     {/* Step 6 */}
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium text-[12px]">
-                      6. Waiting ICT Approval
+                    <span className="px-3 py-1 bg-blue-200 text-yellow-800 rounded-full font-medium text-[12px]">
+                      6. Waiting for ICT Approval
                     </span>
                     <span className="text-gray-400">→</span>
 
                     {/* Step 7 */}
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium text-[12px]">
-                      7. KYC complete
+                    <span className="px-3 py-1 bg-blue-900 text-white rounded-full font-medium text-[12px]">
+                      7. KYC completed
                     </span>
                   </div>
 

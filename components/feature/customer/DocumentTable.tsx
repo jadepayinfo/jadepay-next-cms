@@ -96,7 +96,7 @@ const DocumentTable: React.FC<Props> = ({
       // Filter type approve
       const selectableIds = new Set(
         documents
-          .filter((doc) => doc.status !== "approve")
+          .filter((doc) => doc.status !== "approved")
           .map((doc) => doc.kyc_doc_id)
       );
       setSelectedDocs(selectableIds);

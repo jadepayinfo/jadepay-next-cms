@@ -73,6 +73,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const router = useRouter();
   const initPage = useRef<boolean>(false);
   const [loading, setLoading] = useState(false);
+  const [isDocumentActionLoading, setIsDocumentActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [isFormDisabled, setIsFormDisabled] = useState(false);
   // Selfie Image
@@ -285,6 +286,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     action?: string,
     remark?: string
   ) => {
+    setIsDocumentActionLoading(true);
     try {
       // 1. เตรียมไฟล์สำหรับอัปโหลด
       let fileToUpload: File;
@@ -363,6 +365,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       //return response.data;
     } catch (error) {
       alert("อัปโหลดเอกสารล้มเหลว");
+    } finally {
+      setIsDocumentActionLoading(false);
     }
   };
 
@@ -513,7 +517,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `You Your changes have been saved successfully.`,
+        text: `Your changes have been saved successfully.`,
         showConfirmButton: false,
       });
     } catch (err: any) {
@@ -554,11 +558,12 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   // เพิ่ม handlers ใหม่ใน CustomerForm component
   // 1. Handler สำหรับ Approve
   const handleApproveDocument = async (req: KycDocument) => {
+     setIsDocumentActionLoading(true);
     try {
       const response = await axios.post("/api/kyc/set-action-document", {
         kyc_doc_id: req.kyc_doc_id,
         kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
-        action: "approve",
+        action: "approved",
         customer_id: req.user_id,
         remark: req.remark,
       });
@@ -567,10 +572,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           doc.kyc_doc_id === req.kyc_doc_id
             ? {
                 ...doc,
-                action_status: "Approve",
+                action_status: "Approved",
                 remark: "อนุมัติเอกสาร",
                 active: false,
-                status: "approve",
+                status: "approved",
               }
             : doc
         )
@@ -587,6 +592,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         alert("อนุมัติเอกสารไม่สำเร็จ");
       }
     }
+    finally {
+      setIsDocumentActionLoading(false);
+    }
   };
 
   // 2. Handler สำหรับ Reject
@@ -595,7 +603,21 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     reason: string
   ) => {
     try {
-      if (document.kyc_doc_id!=0) {
+      if (document.kyc_doc_id === 0) {
+        setDocuments((prev) => {
+          const index = prev.indexOf(document);
+          if (index > -1) {
+            const newDocs = [...prev];
+            newDocs.splice(index, 1);
+            return newDocs;
+          }
+          return prev;
+        });
+        alert("ลบเอกสารสำเร็จ");
+        return;
+      }
+
+      if (document.kyc_doc_id != 0) {
         const response = await axios.post("/api/kyc/set-action-document", {
           kyc_doc_id: document.kyc_doc_id,
           kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
@@ -603,7 +625,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           customer_id: document.user_id,
           remark: reason,
         });
-      }     
+      }
 
       // อัปเดต documents state
       setDocuments((prev) =>
@@ -721,7 +743,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       alert("ส่งคำขอเอกสารเพิ่มเติมไม่สำเร็จ");
     }
   };
-  
+
   const handleCancel = () => {
     router.replace("/customer");
   };
@@ -802,7 +824,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
 
-      const allApproved = documents.every((doc) => doc.status === "approve");
+      const allApproved = documents.every((doc) => doc.status === "approved");
       if (!allApproved) {
         //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
         alert("เอกสารยังอนุมัติไม่เรียบร้อย");
@@ -813,7 +835,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       const response = await axios.post("/api/customer/update-customer-info", {
         customer,
         customer_address,
-        kyc_action: "approve",
+        kyc_action: "approved",
         kyc_remark: KycRemark,
       });
 
@@ -839,27 +861,27 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     }
   };
 
-  //checked    
+  //checked
   const [useSameAddress, setUseSameAddress] = useState(false);
   const handleUseSameAddress = (checked: boolean) => {
-  setUseSameAddress(checked);
-  
-  if (checked) {
-    // Copy ข้อมูลจาก Work ไป Contact
-    setContactAddress(WorkAddress);
-    setContactSubDistrict(WorkSubDistrict);
-    setContactCity(WorkCity);
-    setContactState(WorkState);
-    setContactZipcode(WorkZipcode);
-  } else {
-    // Clear Contact Address เมื่อ uncheck
-    setContactAddress("");
-    setContactSubDistrict("");
-    setContactCity("");
-    setContactState("");
-    setContactZipcode("");
-  }
-};
+    setUseSameAddress(checked);
+
+    if (checked) {
+      // Copy ข้อมูลจาก Work ไป Contact
+      setContactAddress(WorkAddress);
+      setContactSubDistrict(WorkSubDistrict);
+      setContactCity(WorkCity);
+      setContactState(WorkState);
+      setContactZipcode(WorkZipcode);
+    } else {
+      // Clear Contact Address เมื่อ uncheck
+      setContactAddress("");
+      setContactSubDistrict("");
+      setContactCity("");
+      setContactState("");
+      setContactZipcode("");
+    }
+  };
 
   useEffect(() => {
     const getLoadData = async () => {
@@ -957,10 +979,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   useEffect(() => {
     const kycStatus = customerInfo?.kyc_data?.kyc_data?.kyc_status;
     if (
-      kycStatus === "Approve" ||
+      kycStatus === "Approved by Jadepay" ||
       kycStatus === "duplicate" ||
-      kycStatus === "waiting for ict approval" ||
-      kycStatus === "kyc complete"
+      kycStatus === "Waiting for ICT Approval" ||
+      kycStatus === "KYC Complete"
     ) {
       setIsFormDisabled(true);
     } else {
@@ -1100,9 +1122,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.operation_approve_at
-                  ? dayjs(kyc.operation_approve_at).utc().format(
-                      "DD/MM/YYYY"
-                    )
+                  ? dayjs(kyc.operation_approve_at).utc().format("DD/MM/YYYY")
                   : ""}
               </p>
             </div>
@@ -1131,10 +1151,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
               <InputCustom
-                name="Frist Name"
-                title="Frist Name"
+                name="Full Name"
+                title="Full Name"
                 type="text"
-                placeholder="frist name"
+                placeholder="Full name"
                 value={Fullname}
                 onChange={(e) => setFullname(e.target.value)}
                 required
@@ -1394,9 +1414,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
               <InputCustom
                 name="Company Name"
-                title="company Name"
+                title="Company Name"
                 type="text"
-                placeholder="company name"
+                placeholder="Company name"
                 value={WorkCompanyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
@@ -1447,8 +1467,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 required
               />
             </div>
-            <input type="checkbox"  checked={useSameAddress} onChange={(e) => handleUseSameAddress(e.target.checked)}/> 
-            <span className="label-text ml-2 ">Use the same information as work address</span>
+            <input
+              type="checkbox"
+              checked={useSameAddress}
+              onChange={(e) => handleUseSameAddress(e.target.checked)}
+            />
+            <span className="label-text ml-2 ">
+              Use the same information as work address
+            </span>
             <div className="flex items-center justify-between text-lg">
               <div>Contact Detail</div>
             </div>
@@ -1557,7 +1583,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               type="button"
               onClick={handleApproveCustomer}
             >
-              {"Approve"}
+              {"Approved"}
               {loading && (
                 <span className="ml-1 loading loading-spinner"></span>
               )}
@@ -1565,6 +1591,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           )}
         </div>
       </div>
+      
 
       {isPopupOpen && (
         <ImagePopup
@@ -1574,6 +1601,15 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           onUpload={handleUploadFromPopup}
           isLoading={isImageLoading}
         />
+      )}
+
+      {isDocumentActionLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
+            <span className="loading loading-spinner loading-lg text-primary"></span>
+            <p className="mt-4 text-gray-700 font-medium"></p>
+          </div>
+        </div>
       )}
     </>
   );
