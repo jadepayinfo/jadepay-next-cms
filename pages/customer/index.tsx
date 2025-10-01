@@ -553,7 +553,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <option value="Operation save">Operation save</option>
                   <option value="Approved by Jadepay">Approved by Jadepay</option>
                   <option value="Processing">Processing</option>
-                  <option value="Waiting ICT Approval">Waiting for ICT Approval</option>
+                  <option value="Waiting for ICT Approval">Waiting for ICT Approval</option>
                   <option value="KYC completed">KYC completed</option>
                 </select>
               </div>
@@ -687,7 +687,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                               )}
                             </Link>
                             {item.kyc_status === "duplicate" ||
-                            item.kyc_status === "Waiting ICT Approval" ? (
+                            item.kyc_status === "Waiting for ICT Approval" ? (
                               <ButtonFill
                                 className="px-3 py-2 btn-info"
                                 onClick={() =>
