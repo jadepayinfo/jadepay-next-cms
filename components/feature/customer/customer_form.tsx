@@ -290,6 +290,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     try {
       // 1. เตรียมไฟล์สำหรับอัปโหลด
       let fileToUpload: File;
+      let optimisticPreviewUrl: string | null = null;
 
       if (previewFiles[doc.kyc_doc_id]) {
         // ใช้ไฟล์ที่เลือกใหม่
@@ -301,6 +302,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         fileToUpload = new File([blob], originalFile.name, {
           type: originalFile.type,
         });
+        // สร้าง preview URL สำหรับ optimistic update
+        optimisticPreviewUrl = URL.createObjectURL(blob);
       } else {
         // ดึงจาก backend พร้อมหมุนตามมุมใหม่ที่หมุนเพิ่ม (ไม่ใช่มุมสะสม)
         const currentRotation = rotationAngles[doc.kyc_doc_id] ?? 0;
@@ -321,10 +324,37 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           `document_${doc.kyc_doc_id}.jpg`,
           { type: "image/jpeg" }
         );
+        // สร้าง preview URL สำหรับ optimistic update
+        optimisticPreviewUrl = URL.createObjectURL(rotatedBlob);
       }
       if (fileToUpload.size === 0) {
         alert("โปรดเลือกไฟล์เอกสาร");
         return;
+      }
+
+      // Optimistic Update - แสดงรูปที่หมุนแล้วทันทีก่อนอัปโหลด
+      if (optimisticPreviewUrl) {
+        // ล้าง URL เก่าก่อน (ถ้ามี) เพื่อป้องกัน memory leak
+        const oldUrl = previewUrls[doc.kyc_doc_id];
+        if (oldUrl) {
+          URL.revokeObjectURL(oldUrl);
+        }
+
+        // อัปเดต UI ทันทีโดยการ batch state updates
+        setPreviewUrls((prev) => ({
+          ...prev,
+          [doc.kyc_doc_id]: optimisticPreviewUrl,
+        }));
+        setRotationAngles((prev) => {
+          const newAngles = { ...prev };
+          delete newAngles[doc.kyc_doc_id];
+          return newAngles;
+        });
+        setSavedRotationAngles((prev) => {
+          const newAngles = { ...prev };
+          delete newAngles[doc.kyc_doc_id];
+          return newAngles;
+        });
       }
 
       // 2. กำหนดค่า action และ remark
@@ -358,32 +388,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         },
       });
 
-      // ล้างค่า rotation และ preview
-      setRotationAngles((prev) => {
-        const newAngles = { ...prev };
-        delete newAngles[doc.kyc_doc_id];
-        return newAngles;
-      });
-
-      setSavedRotationAngles((prev) => {
-        const newAngles = { ...prev };
-        delete newAngles[doc.kyc_doc_id];
-        return newAngles;
-      });
-
-      setPreviewUrls((prev) => {
-        const newUrls = { ...prev };
-        delete newUrls[doc.kyc_doc_id];
-        return newUrls;
-      });
-
+      // ล้างค่า preview files (preview URL และ rotation ถูกล้างไปแล้วใน optimistic update)
       setPreviewFiles((prev) => {
         const newFiles = { ...prev };
         delete newFiles[doc.kyc_doc_id];
         return newFiles;
       });
 
-      // Force reload รูปโดยเพิ่ม timestamp เพื่อ bypass cache
+      // อัปเดต timestamp สำหรับกรณีที่ต้องโหลดจาก backend ใหม่ในอนาคต
       const timestamp = new Date().getTime();
       setImageTimestamps((prev) => ({
         ...prev,
@@ -860,7 +872,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         return;
       }
       const approvedCount = documents.filter((doc) => doc.status != "approved"&& doc.status != "reject").length;
-      if( approvedCount ==0){
+      if( approvedCount >0){
         alert("ไม่มีเอกสารที่อนุมัติ");
         setLoading(false);
         return;

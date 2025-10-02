@@ -173,8 +173,13 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       setExpiredDate(newDateState);
     }
   };
+ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+const [justSaved, setJustSaved] = useState(false);
 
   const handleSave = () => {
+    setHasUnsavedChanges(false);
+    setJustSaved(true);
+
     const updated: KycDocument = {
       ...doc,
       doctype_id: docType,
@@ -187,7 +192,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       status: "review",
       issue_country: issue_country,
     };
-    setHasUnsavedChanges(false);
+
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
   };
 
@@ -297,6 +302,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (!docRole) {
       errors.push("กรุณาเลือก Document Role");
     }
+    // ICT Mapping
+      if (ictId === 0 && currentICTOptions.length > 0) {
+        errors.push("กรุณาเลือก ICT Mapping");
+      }
 
     if (!isSelfie && docRole !== "additional_document_mm") {
       // Document Type
@@ -324,17 +333,19 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
         errors.push("กรุณาเลือก Expired Date");
       }
 
+      console.log("issue_country : ",issue_country)
+      console.log("issue_councurrentNationalityOptions.lengthtry : ",currentNationalityOptions.length)
       if (issue_country === "" && currentNationalityOptions.length > 0) {
         errors.push("กรุณาเลือก Issued Country");
       }
 
-      // ICT Mapping
-      if (ictId === 0 && currentICTOptions.length > 0) {
-        errors.push("กรุณาเลือก ICT Mapping");
-      }
+       console.log("ictId : ",ictId)
+      console.log("issue_councurrentNaticurrentICTOptionsonalityOptions.lengthtry : ",currentICTOptions.length)
+      
     }
 
-    return { isValid: errors.length === 0, errors };
+   return { isValid: errors.length === 0, errors };
+    //return { isValid: false, errors };
   };
 
   // Status logic
@@ -342,7 +353,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const isApproved = status === "approved";
   const isRejected = status === "reject";
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+ 
 
   const checkForChanges = () => {
     // check File
@@ -350,6 +361,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (rotationAngles[doc.kyc_doc_id] !== undefined && rotationAngles[doc.kyc_doc_id] !== 0) {
       checkFile_Change = true;
     }
+    const currentIssuedDate = formatDate(issuedDate.startDate);
+    const currentExpiredDate = formatDate(expiredDate.startDate);
+    const originalIssuedDate = doc.issued_date ? formatDate(new Date(doc.issued_date)) : null;
+    const originalExpiredDate = doc.expired_date ? formatDate(new Date(doc.expired_date)) : null;
 
     //check control
     const currentData = {
@@ -358,8 +373,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       position,
       docIdNo,
       ictId,
-      issuedDate: formatDate(issuedDate.startDate),
-      expiredDate: formatDate(expiredDate.startDate),
+      issuedDate: currentIssuedDate,
+      expiredDate: currentExpiredDate,
     };
 
     const originalData = {
@@ -371,18 +386,14 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
       ictId: doc.ict_mapping_id ?? 0,
-      issuedDate: formatDate(issuedDate.startDate),
-      expiredDate: formatDate(expiredDate.startDate),
+      issuedDate: originalIssuedDate,
+      expiredDate: originalExpiredDate,
     };
-
     const hasChanges =
       JSON.stringify(currentData) !== JSON.stringify(originalData);
-    if (hasChanges || checkFile_Change) {
-      setHasUnsavedChanges(true);
-    //  clearcontrol();
-    } else {
-      setHasUnsavedChanges(false);
-    }
+    const shouldShowUnsaved = hasChanges || checkFile_Change;
+    setHasUnsavedChanges(shouldShowUnsaved);
+
     return hasChanges;
   };
 
@@ -396,6 +407,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   };
 
   useEffect(() => {
+    if (justSaved) {
+      setJustSaved(false);
+      return;
+    }
     checkForChanges();
   }, [
     docRole,
@@ -403,9 +418,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     position,
     docIdNo,
     ictId,
-    issuedDate,
-    expiredDate,
+    issuedDate.startDate,
+    expiredDate.startDate,
     rotationAngles[doc.kyc_doc_id],
+    issue_country,
   ]);
 
   useEffect(() => {
@@ -414,7 +430,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     }
   }, [onValidateDocument, validateDocument]);
 
-  console.log("rotationAngles ",rotationAngles)
   return (
     <>
       <tr className="hover:bg-gray-50">
