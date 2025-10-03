@@ -14,9 +14,11 @@ type SelectOption = {
 interface Props {
   documents: KycDocument[];
   rotationAngles: Record<number, number>;
+  savedRotationAngles: Record<number, number>;
   previewUrls: Record<number, string>;
+  imageTimestamps: Record<number, number>;
   country: string;
-  openPopup: (docId: number) => Promise<void>;
+  openPopup: (docId: KycDocument) => Promise<void>;
   closePopup: () => void;
   saveRotation: (rotation: number) => void;
   handleSaveDocument: (doc: KycDocument, rotation: number) => void;
@@ -44,7 +46,9 @@ const getCountryCode = (country: string): string => {
 const DocumentTable: React.FC<Props> = ({
   documents,
   rotationAngles,
+  savedRotationAngles,
   previewUrls,
+  imageTimestamps,
   country,
   openPopup,
   closePopup,
@@ -96,7 +100,7 @@ const DocumentTable: React.FC<Props> = ({
       // Filter type approve
       const selectableIds = new Set(
         documents
-          .filter((doc) => doc.status !== "approve")
+          .filter((doc) => doc.status !== "approved")
           .map((doc) => doc.kyc_doc_id)
       );
       setSelectedDocs(selectableIds);
@@ -303,7 +307,9 @@ const DocumentTable: React.FC<Props> = ({
                   index={index}
                   country={country}
                   rotationAngles={rotationAngles}
+                  savedRotationAngles={savedRotationAngles}
                   previewUrls={previewUrls}
+                  imageTimestamps={imageTimestamps}
                   globalOptions={globalOptions}
                   optionsLoaded={optionsLoaded}
                   onSaveDocument={handleSaveDocument}

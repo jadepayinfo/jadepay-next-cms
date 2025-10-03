@@ -51,15 +51,33 @@ type SelectOption = {
   value: number;
   label: string;
 };
-
+type ResidentialOption = {
+  value: string;
+  label: string;
+};
+const residentialTypeOption: ResidentialOption[] = [
+  {
+    value: "Tourist",
+    label: "Tourist",
+  },
+  {
+    value: "Resident",
+    label: "Resident",
+  },
+  {
+    value: "Workpermit",
+    label: "Workpermit",
+  },
+];
 const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const router = useRouter();
   const initPage = useRef<boolean>(false);
   const [loading, setLoading] = useState(false);
+  const [isDocumentActionLoading, setIsDocumentActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [isFormDisabled, setIsFormDisabled] = useState(false);
   // Selfie Image
-  const [selfeIMG, setSelfieIMG] = useState<number | undefined | null>(
+  const [selfeIMG, setSelfieIMG] = useState<KycDocument | undefined | null>(
     undefined
   );
   const [selfeDoc, setSelfieDOC] = useState<KycDocument | undefined | null>(
@@ -81,9 +99,15 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [Marital, setMarital] = useState(
     customerInfo?.customer_data?.customer?.marital ?? ""
   );
-  const [Residential, setResidential] = useState(
-    customerInfo?.customer_data?.customer?.residential ?? ""
+
+  const [Residential, setResidential] = useState<
+    ResidentialOption | undefined | null
+  >(
+    residentialTypeOption.find(
+      (i) => i?.value == customerInfo?.customer_data?.customer?.residential
+    )
   );
+
   const [KycLevel, setKycLevel] = useState(
     customerInfo?.kyc_data.kyc_data.kyc_level ?? ""
   );
@@ -96,7 +120,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [KycRemark, setKycRemark] = useState(
     customerInfo?.kyc_data.kyc_data.remark ?? ""
   );
-
 
   // DDL Nationality
   const [NationalityList, setNationalityList] = useState<SelectOption[]>([]);
@@ -183,40 +206,38 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 
   // kyc data
   const [kyc, setKyc] = useState(customerInfo?.kyc_data.kyc_data ?? null);
-  // popup open image & rotation
+  // popup open image
   const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
   const [currentDocId, setCurrentDocId] = useState<number | null>(null);
-  const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
+  const [popupKycDocument, setPopupKycDocument] = useState<KycDocument | undefined>(undefined);
+ const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
     {}
   );
+  const [savedRotationAngles, setSavedRotationAngles] = useState<Record<number, number>>({});
+
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
   const [previewFiles, setPreviewFiles] = useState<Record<number, File>>({});
-  const openPopup = async (docId: number) => {
+  const [imageTimestamps, setImageTimestamps] = useState<Record<number, number>>({});
+  const openPopup = async (doc: KycDocument) => {
     setIsImageLoading(true);
     try {
       let url: string | null = null;
-      if (previewUrls[docId]) {
-        url = previewUrls[docId];
-      } else if (docId === 0) {
+      if (previewUrls[doc.kyc_doc_id]) {
+        url = previewUrls[doc.kyc_doc_id];
+      } else if (doc.kyc_doc_id === 0) {
         url = null;
       } else {
-        const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${docId}`);
+        const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
         if (!resp.ok) throw new Error("Cannot fetch image");
         const blob = await resp.blob();
-
-        const rotation = rotationAngles[docId] ?? 0;
-        if (rotation === 0) {
-          url = URL.createObjectURL(blob);
-        } else {
-          const rotatedBlob = await rotateImage(blob, rotation);
-          url = URL.createObjectURL(rotatedBlob);
-        }
+        url = URL.createObjectURL(blob);
       }
 
       setPopupImageUrl(url);
-      setCurrentDocId(docId);
+      setPopupKycDocument(doc)
+      setCurrentDocId(doc.kyc_doc_id);
       setIsPopupOpen(true);
     } catch (err) {
       alert("โหลดรูปไม่สำเร็จ");
@@ -233,9 +254,11 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     setCurrentDocId(null);
     setIsPopupOpen(false);
   };
-  // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
+
+    // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
   const saveRotation = async (rotation: number) => {
     if (currentDocId === null) return;
+    // rotation ที่ได้มาคือมุมสะสมจาก popup แล้ว (เริ่มจาก savedRotationAngles)
     setRotationAngles((prev) => ({
       ...prev,
       [currentDocId]: rotation,
@@ -263,9 +286,11 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     action?: string,
     remark?: string
   ) => {
+    setIsDocumentActionLoading(true);
     try {
       // 1. เตรียมไฟล์สำหรับอัปโหลด
       let fileToUpload: File;
+      let optimisticPreviewUrl: string | null = null;
 
       if (previewFiles[doc.kyc_doc_id]) {
         // ใช้ไฟล์ที่เลือกใหม่
@@ -277,8 +302,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         fileToUpload = new File([blob], originalFile.name, {
           type: originalFile.type,
         });
+        // สร้าง preview URL สำหรับ optimistic update
+        optimisticPreviewUrl = URL.createObjectURL(blob);
       } else {
-        // ดึงจาก backend
+        // ดึงจาก backend พร้อมหมุนตามมุมใหม่ที่หมุนเพิ่ม (ไม่ใช่มุมสะสม)
+        const currentRotation = rotationAngles[doc.kyc_doc_id] ?? 0;
+        const previousSavedRotation = savedRotationAngles[doc.kyc_doc_id] ?? 0;
+        const newRotationOnly = currentRotation - previousSavedRotation;
+
         const resp = await axios.get(
           `/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`,
           {
@@ -287,16 +318,43 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         );
         const blob = resp.data;
         const rotatedBlob =
-          rotation === 0 ? blob : await rotateImage(blob, rotation);
+          newRotationOnly === 0 ? blob : await rotateImage(blob, newRotationOnly);
         fileToUpload = new File(
           [rotatedBlob],
           `document_${doc.kyc_doc_id}.jpg`,
           { type: "image/jpeg" }
         );
+        // สร้าง preview URL สำหรับ optimistic update
+        optimisticPreviewUrl = URL.createObjectURL(rotatedBlob);
       }
       if (fileToUpload.size === 0) {
         alert("โปรดเลือกไฟล์เอกสาร");
         return;
+      }
+
+      // Optimistic Update - แสดงรูปที่หมุนแล้วทันทีก่อนอัปโหลด
+      if (optimisticPreviewUrl) {
+        // ล้าง URL เก่าก่อน (ถ้ามี) เพื่อป้องกัน memory leak
+        const oldUrl = previewUrls[doc.kyc_doc_id];
+        if (oldUrl) {
+          URL.revokeObjectURL(oldUrl);
+        }
+
+        // อัปเดต UI ทันทีโดยการ batch state updates
+        setPreviewUrls((prev) => ({
+          ...prev,
+          [doc.kyc_doc_id]: optimisticPreviewUrl,
+        }));
+        setRotationAngles((prev) => {
+          const newAngles = { ...prev };
+          delete newAngles[doc.kyc_doc_id];
+          return newAngles;
+        });
+        setSavedRotationAngles((prev) => {
+          const newAngles = { ...prev };
+          delete newAngles[doc.kyc_doc_id];
+          return newAngles;
+        });
       }
 
       // 2. กำหนดค่า action และ remark
@@ -330,17 +388,25 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         },
       });
 
-      // setDocuments((prev) =>
-      //   prev.map((doc) =>
-      //     doc.kyc_doc_id === document.kyc_doc_id
-      //       ? { ...doc, action_status: "Review", remark: null, active: true }
-      //       : doc
-      //   )
-      // );
+      // ล้างค่า preview files (preview URL และ rotation ถูกล้างไปแล้วใน optimistic update)
+      setPreviewFiles((prev) => {
+        const newFiles = { ...prev };
+        delete newFiles[doc.kyc_doc_id];
+        return newFiles;
+      });
+
+      // อัปเดต timestamp สำหรับกรณีที่ต้องโหลดจาก backend ใหม่ในอนาคต
+      const timestamp = new Date().getTime();
+      setImageTimestamps((prev) => ({
+        ...prev,
+        [doc.kyc_doc_id]: timestamp,
+      }));
+
       alert("อัปโหลดเอกสารสำเร็จ");
-      //return response.data;
     } catch (error) {
       alert("อัปโหลดเอกสารล้มเหลว");
+    } finally {
+      setIsDocumentActionLoading(false);
     }
   };
 
@@ -423,7 +489,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           : null,
         gender: Gender,
         marital: Marital,
-        residential: Residential,
+        residential: Residential?.value || "",
         occupation: Occupation?.value ? Number(Occupation.value) : 0,
         income: MonthlyIncome?.value ? Number(MonthlyIncome.value) : 0,
         active: true,
@@ -491,7 +557,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `You have successfully.`,
+        text: `Your changes have been saved successfully.`,
         showConfirmButton: false,
       });
     } catch (err: any) {
@@ -532,11 +598,12 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   // เพิ่ม handlers ใหม่ใน CustomerForm component
   // 1. Handler สำหรับ Approve
   const handleApproveDocument = async (req: KycDocument) => {
+     setIsDocumentActionLoading(true);
     try {
       const response = await axios.post("/api/kyc/set-action-document", {
         kyc_doc_id: req.kyc_doc_id,
         kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
-        action: "approve",
+        action: "approved",
         customer_id: req.user_id,
         remark: req.remark,
       });
@@ -545,10 +612,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           doc.kyc_doc_id === req.kyc_doc_id
             ? {
                 ...doc,
-                action_status: "Approve",
+                action_status: "Approved",
                 remark: "อนุมัติเอกสาร",
                 active: false,
-                status: "approve",
+                status: "approved",
               }
             : doc
         )
@@ -565,6 +632,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         alert("อนุมัติเอกสารไม่สำเร็จ");
       }
     }
+    finally {
+      setIsDocumentActionLoading(false);
+    }
   };
 
   // 2. Handler สำหรับ Reject
@@ -573,13 +643,29 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     reason: string
   ) => {
     try {
-      const response = await axios.post("/api/kyc/set-action-document", {
-        kyc_doc_id: document.kyc_doc_id,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
-        action: "reject",
-        customer_id: document.user_id,
-        remark: reason,
-      });
+      if (document.kyc_doc_id === 0) {
+        setDocuments((prev) => {
+          const index = prev.indexOf(document);
+          if (index > -1) {
+            const newDocs = [...prev];
+            newDocs.splice(index, 1);
+            return newDocs;
+          }
+          return prev;
+        });
+        alert("ลบเอกสารสำเร็จ");
+        return;
+      }
+
+      if (document.kyc_doc_id != 0) {
+        const response = await axios.post("/api/kyc/set-action-document", {
+          kyc_doc_id: document.kyc_doc_id,
+          kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+          action: "reject",
+          customer_id: document.user_id,
+          remark: reason,
+        });
+      }
 
       // อัปเดต documents state
       setDocuments((prev) =>
@@ -697,33 +783,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       alert("ส่งคำขอเอกสารเพิ่มเติมไม่สำเร็จ");
     }
   };
-  // 6. Handler สำหรับ Selfe
-  const handleSelfieAction = () => {
-    const selfieDocId = selfeIMG ?? 0;
 
-    // ถ้ามี preview file ใหม่ ให้ save
-    if (previewUrls[selfieDocId]) {
-      // ใช้ Partial เพื่อให้ส่งแค่ fields ที่จำเป็น
-      const selfieDoc: Partial<KycDocument> & Pick<KycDocument, "kyc_doc_id"> =
-        {
-          kyc_doc_id: selfieDocId,
-          kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id ?? 0,
-          user_id: customerInfo?.customer_data.customer.user_id ?? 0,
-          doc_type: "SELFIE",
-          doctype_id: 310,
-          document_info: "Selfie",
-          action: "approve",
-          rotationAngle: rotationAngles[selfieDocId] || 0,
-          position: "FRONT",
-        };
-
-      const rotation = rotationAngles[selfieDocId] || 0;
-      handleSaveDocument(selfieDoc as KycDocument, rotation);
-    } else {
-      // ถ้ายังไม่มีไฟล์ ให้เปิด popup เพื่อ upload
-      openPopup(selfieDocId);
-    }
-  };
   const handleCancel = () => {
     router.replace("/customer");
   };
@@ -747,7 +807,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           : null,
         gender: Gender,
         marital: Marital,
-        residential: Residential,
+        residential: Residential?.value || "",
         occupation: Occupation?.value ? Number(Occupation.value) : 0,
         income: MonthlyIncome?.value ? Number(MonthlyIncome.value) : 0,
         active: true,
@@ -803,26 +863,31 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       };
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
-
-      const allApproved = documents.every((doc) => doc.status === "approve");
-      if (!allApproved) {
+      
+      const allApproved = documents.every((doc) => doc.status === "approved"||doc.status === "reject");
+      if (!allApproved) {       
         //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
         alert("เอกสารยังอนุมัติไม่เรียบร้อย");
         setLoading(false);
         return;
       }
-
+      const approvedCount = documents.filter((doc) => doc.status != "approved"&& doc.status != "reject").length;
+      if( approvedCount >0){
+        alert("ไม่มีเอกสารที่อนุมัติ");
+        setLoading(false);
+        return;
+      }
       const response = await axios.post("/api/customer/update-customer-info", {
         customer,
         customer_address,
-        kyc_action: "approve",
+        kyc_action: "approved",
         kyc_remark: KycRemark,
       });
 
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `Approe customer information`,
+        text: `Approve customer information`,
         showConfirmButton: false,
       }).then(() => {
         router.replace("/customer");
@@ -840,6 +905,29 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       setLoading(false);
     }
   };
+
+  //checked
+  const [useSameAddress, setUseSameAddress] = useState(false);
+  const handleUseSameAddress = (checked: boolean) => {
+    setUseSameAddress(checked);
+
+    if (checked) {
+      // Copy ข้อมูลจาก Work ไป Contact
+      setContactAddress(WorkAddress);
+      setContactSubDistrict(WorkSubDistrict);
+      setContactCity(WorkCity);
+      setContactState(WorkState);
+      setContactZipcode(WorkZipcode);
+    } else {
+      // Clear Contact Address เมื่อ uncheck
+      setContactAddress("");
+      setContactSubDistrict("");
+      setContactCity("");
+      setContactState("");
+      setContactZipcode("");
+    }
+  };
+
   useEffect(() => {
     const getLoadData = async () => {
       try {
@@ -929,16 +1017,17 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     const selfieDoc = customerInfo?.kyc_data.kyc_documents?.find(
       (d) => d.document_info === "Selfie"
     );
-    setSelfieIMG(selfieDoc?.kyc_doc_id ?? null);
+    setSelfieIMG(selfieDoc ?? null);
     setSelfieDOC(selfieDoc);
   }, []);
 
   useEffect(() => {
     const kycStatus = customerInfo?.kyc_data?.kyc_data?.kyc_status;
     if (
-      kycStatus === "approved" ||
+      kycStatus === "Approved by Jadepay" ||
       kycStatus === "duplicate" ||
-      kycStatus === "waiting for ict approval"
+      kycStatus === "Waiting for ICT Approval" ||
+      kycStatus === "KYC Complete"
     ) {
       setIsFormDisabled(true);
     } else {
@@ -958,34 +1047,31 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <div className="relative flex flex-col items-center">
             <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-2">
-              {previewUrls[selfeIMG ?? 0] ? (
+              {previewUrls[selfeIMG?.kyc_doc_id ?? 0] ? (
                 // กรณีมี preview image (ไฟล์ที่เลือกใหม่)
                 <img
-                  src={previewUrls[selfeIMG ?? 0]}
+                  src={previewUrls[selfeIMG?.kyc_doc_id ?? 0]}
                   alt="selfie preview"
                   className="w-32 h-32 object-contain cursor-pointer transition-transform mx-auto"
                   style={{
-                    transform: `rotate(${rotationAngles[selfeIMG ?? 0] ?? 0}deg)`,
+                    transform: `rotate(${rotationAngles[selfeIMG?.kyc_doc_id ?? 0] ?? 0}deg)`,
                   }}
-                  onClick={() => openPopup(selfeIMG ?? 0)}
+                  onClick={() => selfeIMG && openPopup(selfeIMG)}
                 />
-              ) : selfeIMG && selfeIMG !== 0 ? (
+              ) : selfeIMG && selfeIMG?.kyc_doc_id !== 0 ? (
                 // กรณีมี selfie ใน database แล้ว
                 <img
-                  src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG}`}
+                  src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG?.kyc_doc_id}${imageTimestamps[selfeIMG.kyc_doc_id] ? `&t=${imageTimestamps[selfeIMG.kyc_doc_id]}` : ''}`}
                   alt="selfie"
                   className="w-32 h-32 object-contain cursor-pointer transition-transform mx-auto"
                   style={{
-                    transform: `rotate(${rotationAngles[selfeIMG] || 0}deg)`,
+                    transform: `rotate(${rotationAngles[selfeIMG.kyc_doc_id] ?? savedRotationAngles[selfeIMG.kyc_doc_id] ?? 0}deg)`,
                   }}
                   onClick={() => openPopup(selfeIMG)}
                 />
               ) : (
                 // กรณียังไม่มี selfie (placeholder)
-                <div
-                  className="text-center text-gray-500 cursor-pointer"
-                  onClick={() => openPopup(0)} // ใช้ 0 สำหรับ placeholder
-                >
+                <div className="text-center text-gray-500">
                   <User className="w-6 h-6 mx-auto mb-1" />
                   <p className="text-xs font-medium">IMG</p>
                   <p className="text-xxs">selfie</p>
@@ -1058,7 +1144,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.created_at
-                  ? dayjs(kyc.created_at).format("DD/MM/YYYY HH:mm:ss")
+                  ? dayjs(kyc.created_at).utc().format("DD/MM/YYYY")
                   : ""}
               </p>
             </div>
@@ -1078,9 +1164,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.operation_approve_at
-                  ? dayjs(kyc.operation_approve_at).format(
-                      "DD/MM/YYYY HH:mm:ss"
-                    )
+                  ? dayjs(kyc.operation_approve_at).utc().format("DD/MM/YYYY")
                   : ""}
               </p>
             </div>
@@ -1091,7 +1175,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </label>
               <p className="text-gray-900 text-sm mb-1 mr-2">
                 {kyc?.ict_approve_at
-                  ? dayjs(kyc.ict_approve_at).format("DD/MM/YYYY HH:mm:ss")
+                  ? dayjs(kyc.ict_approve_at).utc().format("DD/MM/YYYY")
                   : ""}
               </p>
             </div>
@@ -1109,10 +1193,10 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
               <InputCustom
-                name="Frist Name"
-                title="Frist Name"
+                name="Full Name"
+                title="Full Name"
                 type="text"
-                placeholder="frist name"
+                placeholder="Full name"
                 value={Fullname}
                 onChange={(e) => setFullname(e.target.value)}
                 required
@@ -1302,56 +1386,61 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 </div>
               </div>
               <div className="flex flex-col ">
+                <div className="mb-2 md:mb-0 md:mr-4 mt-3 text-xs">
+                  Resident Type
+                </div>
+                <div className="rounded-md relative w-full force-light-background">
+                  <Select
+                    className="mt-1"
+                    classNamePrefix="select-custom"
+                    instanceId="level-control"
+                    placeholder={
+                      <div tw="flex items-center gap-2">
+                        <span>Residential Type</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </div>
+                    }
+                    options={residentialTypeOption}
+                    defaultValue={Residential}
+                    value={Residential}
+                    onChange={(item) => setResidential(item)}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col mt-4">
                 <InputCustom
-                  name="residential"
-                  title="Resident Type"
+                  name="KYC score"
+                  title="KYC Score"
                   type="text"
-                  placeholder="residential"
-                  value={Residential}
-                  onChange={(e) => setResidential(e.target.value)}
-                  required
+                  placeholder="KYC Score"
+                  readOnly
+                  disabled={true}
+                  value={KycScore}
+                  onChange={(e) => setKycScore(e.target.value)}
                 />
               </div>
-              <InputCustom
-                name="KYC level"
-                title="KYC Level"
-                type="text"
-                placeholder="kyc level"
-                value={KycLevel}
-                readOnly
-                disabled={true}
-                onChange={(e) => setKycLevel(e.target.value)}
-              />
-              <InputCustom
-                name="Kyc score"
-                title="Kyc Score"
-                type="text"
-                placeholder="Kyc Score"
-                readOnly
-                disabled={true}
-                value={KycScore}
-                onChange={(e) => setKycScore(e.target.value)}
-              />
-              <InputCustom
-                name="Kyc risk status"
-                title="Kyc risk status"
-                type="text"
-                placeholder="Kyc risk status"
-                readOnly
-                disabled={true}
-                value={KycRiskStatus}
-                onChange={(e) => setKycRiskStatus(e.target.value)}
-              />
-            </div>   
+              <div className="flex flex-col mt-4">
+                <InputCustom
+                  name="KYC risk status"
+                  title="KYC risk status"
+                  type="text"
+                  placeholder="KYC risk status"
+                  readOnly
+                  disabled={true}
+                  value={KycRiskStatus}
+                  onChange={(e) => setKycRiskStatus(e.target.value)}
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
               <TextareaCustom
-              title="Remark"
-              name="Deal Details"
-              value={KycRemark}
-              onChange={(e) => setKycRemark(e.target.value)}
-              rows={KycRemark ? 6 : 4}
-            />
-              </div>         
+                title="Remark"
+                name="Deal Details"
+                value={KycRemark}
+                onChange={(e) => setKycRemark(e.target.value)}
+                rows={KycRemark ? 6 : 4}
+              />
+            </div>
           </div>
 
           <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
@@ -1367,9 +1456,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
               <InputCustom
                 name="Company Name"
-                title="company Name"
+                title="Company Name"
                 type="text"
-                placeholder="company name"
+                placeholder="Company name"
                 value={WorkCompanyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
@@ -1420,7 +1509,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 required
               />
             </div>
-
+            <input
+              type="checkbox"
+              checked={useSameAddress}
+              onChange={(e) => handleUseSameAddress(e.target.checked)}
+            />
+            <span className="label-text ml-2 ">
+              Use the same information as work address
+            </span>
             <div className="flex items-center justify-between text-lg">
               <div>Contact Detail</div>
             </div>
@@ -1496,7 +1592,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           documents={documents}
           openPopup={openPopup}
           rotationAngles={rotationAngles}
+          savedRotationAngles={savedRotationAngles}
           previewUrls={previewUrls}
+          imageTimestamps={imageTimestamps}
           country=""
           closePopup={closePopup}
           saveRotation={saveRotation}
@@ -1529,7 +1627,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               type="button"
               onClick={handleApproveCustomer}
             >
-              {"Approve"}
+              {"Approved"}
               {loading && (
                 <span className="ml-1 loading loading-spinner"></span>
               )}
@@ -1537,6 +1635,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           )}
         </div>
       </div>
+      
 
       {isPopupOpen && (
         <ImagePopup
@@ -1545,7 +1644,18 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           onSaveRotation={saveRotation}
           onUpload={handleUploadFromPopup}
           isLoading={isImageLoading}
+          document={popupKycDocument}
+          initialRotation={currentDocId !== null ? (savedRotationAngles[currentDocId] ?? 0) : 0}
         />
+      )}
+
+      {isDocumentActionLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center shadow-xl">
+            <span className="loading loading-spinner loading-lg text-primary"></span>
+            <p className="mt-4 text-gray-700 font-medium"></p>
+          </div>
+        </div>
       )}
     </>
   );

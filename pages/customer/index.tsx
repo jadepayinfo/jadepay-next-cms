@@ -14,7 +14,6 @@ import Datepicker, { DateRangeType } from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import ButtonOutline from "@/components/buttons/button_outline";
-import { Backend } from "@/lib/axios";
 import { Customer } from "@/model/customer";
 import { ButtonFill } from "@/components/buttons";
 import Link from "next/link";
@@ -56,13 +55,15 @@ const CustomerPage: NextPage<Props> = (props) => {
   const [filterName, setFilterName] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRangeType>(initDateRange());
   const [source, setSource] = useState("");
-
+  const [status, setStatus] = useState("");
   // Table states
   const [isFillForm, setIsFillForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState<number>(0);
   const refPage = useRef(1);
   const [data, setData] = useState<Customer[]>([]);
+
+  
   // check bok
   const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
   const handleCheckboxChange = (customerId: number, isChecked: boolean) => {
@@ -99,15 +100,16 @@ const CustomerPage: NextPage<Props> = (props) => {
       const endDate = dayjs(dateRange.endDate).endOf("day").unix();
       params += `&registered_at_start=${startDate}&registered_at_end=${endDate}`;
     }
-    if (source) {
+    if (source !="" &&source!= "All") {      
       params += `&source=${source}`;
+    }
+    if (status !="" &&status!= "All") {      
+      params += `&status=${status}`;
     }
 
     try {
-      const res_customer_list = await axios.get(
-        `/api/customer/list?${params}`
-      );
-    
+      const res_customer_list = await axios.get(`/api/customer/list?${params}`);
+
       const { data, count } = res_customer_list.data;
       const totalPages = Math.ceil(count / limit);
       setData(data);
@@ -231,7 +233,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       const uploadCustomers: FileCustomerUpoad[] = [];
       excelData.forEach((row, index) => {
         try {
-          console.log("row :", row)
           const data: FileCustomerUpoad = {
             name: String(row["Name"] || ""),
             phone_number: String(row["Phone Number"] || 0),
@@ -284,18 +285,17 @@ const CustomerPage: NextPage<Props> = (props) => {
             other_occupation: String(row["Other Occupation"] || ""),
             resident_type: String(row["Resident Type"] || ""),
           };
-          console.log("data : ", data)
           uploadCustomers.push(data);
         } catch (error) {
           console.error(`Error processing row ${index + 1}:`, error);
           return;
         }
       });
-      
+
       const response = await axios.post("/api/ict-partner/upload-customer", {
-      uploadCustomers, 
-      file_name: uploadFile.name
-    });
+        uploadCustomers,
+        file_name: uploadFile.name,
+      });
 
       alert(`ส่งไฟล์สำเร็จ! ระบบกำลังประมวลผลในพื้นหลัง`);
 
@@ -342,7 +342,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       blankrows: false,
       raw: false,
     }) as ExcelRow[];
-    console.log("jsonData : ", jsonData)
     return jsonData;
   };
 
@@ -354,26 +353,26 @@ const CustomerPage: NextPage<Props> = (props) => {
 
   const handleProcess = async () => {
     try {
-    const response = await axios.post("/api/ict-partner/submit-to-ict", {
-      user_ids: selectedCustomers
-    });
+      const response = await axios.post("/api/ict-partner/submit-to-ict", {
+        user_ids: selectedCustomers,
+      });
 
-    if (response.status==200) {
-      setData((prevData) =>
-        prevData.map((item) =>
-          selectedCustomers.includes(item.customer_id)
-            ? { ...item, kyc_status: "Processing" }
-            : item
-        )
-      );
-      setSelectedCustomers([]);
-      alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
-      handleFilter();
-    }
+      if (response.status == 200) {
+        setData((prevData) =>
+          prevData.map((item) =>
+            selectedCustomers.includes(item.customer_id)
+              ? { ...item, kyc_status: "Processing" }
+              : item
+          )
+        );
+        setSelectedCustomers([]);
+        alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
+        handleFilter();
+      }
     } catch (error) {
-    console.error('Submit to ICT error:', error);
-    // withAuth interceptor จะจัดการ 401/403 แล้ว
-  }
+      console.error("Submit to ICT error:", error);
+      // withAuth interceptor จะจัดการ 401/403 แล้ว
+    }
   };
 
   const handleApproveKYC = async (UserIdId: number, customerName: string) => {
@@ -531,8 +530,31 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <option value="" disabled>
                     Source
                   </option>
+                  <option value="All">All</option>
                   <option value="Online">Online</option>
                   <option value="FileUpload">FileUpload</option>
+                  <option value="ICT">ICT</option>
+                </select>
+              </div>
+              <div className="mt-4 grow">
+                <select
+                  className="select select-ui w-full"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Status
+                  </option>
+                  <option value="All">All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Wait for review">Waiting for review</option>
+                  <option value="Operation save">Operation save</option>
+                  <option value="Approved by Jadepay">Approved by Jadepay</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Re-Processing">Re-Processing</option>
+                  <option value="Waiting for ICT Approval">Waiting for ICT Approval</option>
+                  <option value="KYC completed">KYC completed</option>
+                  <option value="Duplicate">Duplicate</option>
                 </select>
               </div>
               <div className="mt-4 grow">
@@ -600,9 +622,9 @@ const CustomerPage: NextPage<Props> = (props) => {
                       <tr key={index} className="hover border-[--border-color]">
                         <td>
                           {item.kyc_status === "Processing" ||
-                          item.kyc_status === "waiting for ict approval" ||
-                          item.kyc_status === "duplicate" ||
-                          item.kyc_status === "kyc complete" ? (
+                          item.kyc_status === "Waiting for ICT Approval" ||
+                          item.kyc_status === "Duplicate" ||
+                          item.kyc_status === "KYC complete" ? (
                             <div className="w-4 h-4"></div>
                           ) : (
                             <input
@@ -623,24 +645,20 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>{`${item.fullname}`.trim()}</td>
                         <td>{item.email}</td>
                         <td>
-                          {dayjs(item.created_at).format("DD/MM/YYYY HH:mm:ss")}
+                          {dayjs(item.created_at).utc().format("DD/MM/YYYY")}
                         </td>
                         <td>
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.kyc_status === "Approve" ||
-                              item.kyc_status === "kyc complete"
-                                ? "bg-green-100 text-green-800"
-                                : item.kyc_status === "Pending" ||
-                                    item.kyc_status === "Processing" ||
-                                    item.kyc_status ===
-                                      "waiting for ict approval"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : item.kyc_status === "Review"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : item.kyc_status === "duplicate"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
+                              item.kyc_status === "Waiting for review" ? "bg-yellow-100 text-gray-700":
+                              item.kyc_status === "Operation save" ? "bg-green-100 text-gray-800":
+                              item.kyc_status === "Approved by Jadepay" ? " bg-green-800 text-white":
+                              item.kyc_status === "Processing" ? "bg-blue-100 text-gray-800":
+                              item.kyc_status === "Waiting for ICT Approval" ? "bg-blue-200 text-gray-800":
+                              item.kyc_status === "KYC completed" ? "bg-blue-900 text-white":
+                              item.kyc_status === "Re-Processing" ? "bg-red-900 text-white":
+                              item.kyc_status === "Reject" || item.kyc_status === "Duplicate"  ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {item.kyc_status}
@@ -650,26 +668,33 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <div className="flex gap-2">
                             <Link href={`/customer/edit/${item.customer_id}`}>
-                              {item.kyc_status === "Approve" ||
-                              item.kyc_status === "duplicate" ||
-                              item.kyc_status === "waiting for ict approval" ||
-                              item.kyc_status === "kyc complete" ? (
-                                <ButtonFill className="px-3 py-2 btn-primary ">
+                              {item.kyc_status === "Approved by Jadepay" ||
+                              item.kyc_status === "Duplicate" ||
+                              item.kyc_status === "Waiting for ICT Approval" ||
+                              item.kyc_status === "KYC Completed" ? (
+                                <ButtonFill
+                                  className="px-3 py-2 btn-primary"
+                                  title="View Details"
+                                >
                                   <View className="w-4 h-4" />
                                 </ButtonFill>
                               ) : (
-                                <ButtonFill className="px-3 py-2 btn-warning">
+                                <ButtonFill
+                                  className="px-3 py-2 btn-warning"
+                                  title="Edit Customer"
+                                >
                                   <IconEdit />
                                 </ButtonFill>
                               )}
                             </Link>
-                            {item.kyc_status === "duplicate" ||
-                            item.kyc_status === "waiting for ict approval" ? (
+                            {item.kyc_status === "Duplicate" ||
+                            item.kyc_status === "Waiting for ICT Approval" ? (
                               <ButtonFill
                                 className="px-3 py-2 btn-info"
                                 onClick={() =>
                                   handleApproveKYC(item.user_id, item.fullname)
                                 }
+                                title="Approved KYC"
                               >
                                 <UserCheck className="w-4 h-4" />
                               </ButtonFill>
@@ -706,17 +731,67 @@ const CustomerPage: NextPage<Props> = (props) => {
             </div>
 
             <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
-              <div className="flex gap-4 items-center justify-end">
-                <ButtonFill
-                  className="btn btn-primary btn-sm p-3 min-h-[38px]"
-                  type="button"
-                  onClick={handleProcess}
-                >
-                  {"send to ICT"}
-                  {loading && (
-                    <span className="ml-1 loading loading-spinner"></span>
-                  )}
-                </ButtonFill>
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                {/* KYC Status Flow */}
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    KYC Status Flow:
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {/* Step 1 */}
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-normal text-[12px]">
+                      1. Pending (User entry)
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    {/* Step 2 */}
+                    <span className="px-3 py-1 bg-yellow-100 text-gray-700 rounded-full font-normal text-[12px]">
+                      2. Waiting for review
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 3 */}
+                    <span className="px-3 py-1 bg-green-100 text-gray-800 rounded-full font-medium text-[12px]">
+                      3. Operation Save
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    {/* Step 4 */}
+                    <span className="px-3 py-1 bg-green-800 text-white rounded-full font-medium text-[12px]">
+                      4. Approved by Jadepay
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    {/* Step 5 */}
+                    <span className="px-3 py-1 bg-blue-100 text-yellow-800 rounded-full font-medium text-[12px]">
+                      5. Processing
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 6 */}
+                    <span className="px-3 py-1 bg-blue-200 text-yellow-800 rounded-full font-medium text-[12px]">
+                      6. Waiting for ICT Approval
+                    </span>
+                    <span className="text-gray-400">→</span>
+
+                    {/* Step 7 */}
+                    <span className="px-3 py-1 bg-blue-900 text-white rounded-full font-medium text-[12px]">
+                      7. KYC completed
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* Action Button */}
+                <div className="flex gap-4 items-center">
+                  <ButtonFill
+                    className="btn btn-primary btn-sm p-3 min-h-[38px]"
+                    type="button"
+                    onClick={handleProcess}
+                  >
+                    {"send to ICT"}
+                    {loading && (
+                      <span className="ml-1 loading loading-spinner"></span>
+                    )}
+                  </ButtonFill>
+                </div>
               </div>
             </div>
           </div>

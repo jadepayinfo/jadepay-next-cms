@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Info,
   FileWarning,
+  Trash2
 } from "lucide-react";
 import { KycDocument } from "@/model/kyc";
 
@@ -25,7 +26,9 @@ interface DocumentRowProps {
   index: number;
   country: string;
   rotationAngles: Record<number, number>;
+  savedRotationAngles: Record<number, number>;
   previewUrls: Record<number, string>;
+  imageTimestamps: Record<number, number>;
   globalOptions: {
     primary: SelectOption[];
     secondary: SelectOption[];
@@ -36,7 +39,7 @@ interface DocumentRowProps {
   optionsLoaded: boolean;
   isSelected?: boolean;
   onSaveDocument: (doc: KycDocument, rotation: number) => void;
-  onOpenPopup: (docId: number) => Promise<void>;
+  onOpenPopup: (docId: KycDocument) => Promise<void>;
   onApproveDocument?: (doc: KycDocument) => Promise<void>;
   onRejectDocument?: (doc: KycDocument, reason: string) => Promise<void>;
   onInactiveDocument?: (doc: KycDocument, reason: string) => Promise<void>;
@@ -78,7 +81,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   index,
   country,
   rotationAngles,
+  savedRotationAngles,
   previewUrls,
+  imageTimestamps,
   globalOptions,
   optionsLoaded,
   isSelected = false,
@@ -99,10 +104,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   // Modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showInactiveModal, setShowInactiveModal] = useState(false);
   const [showRequiredModal, setShowRequiredModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [inactiveReason, setInactiveReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
 
   // Document states
@@ -170,8 +173,13 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       setExpiredDate(newDateState);
     }
   };
+ const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+const [justSaved, setJustSaved] = useState(false);
 
   const handleSave = () => {
+    setHasUnsavedChanges(false);
+    setJustSaved(true);
+
     const updated: KycDocument = {
       ...doc,
       doctype_id: docType,
@@ -184,7 +192,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       status: "review",
       issue_country: issue_country,
     };
-    setHasUnsavedChanges(false);
+
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
   };
 
@@ -211,6 +219,15 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       } catch (error) {}
     }
   };
+
+  const onDeleteRow = async () => {
+      if (onRejectDocument) {
+      try {
+        await onRejectDocument(doc, "");
+        closeRejectModal();
+      } catch (error) {}
+    }
+  }
 
   const openRequiredModal = () => {
     setShowRequiredModal(true);
@@ -270,7 +287,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
           issued_date: formatDate(issuedDate.startDate),
           expired_date: formatDate(expiredDate.startDate),
           ict_mapping_id: ictId,
-          status: "approve",
+          status: "approved",
         };
 
         await onApproveDocument(updated);
@@ -285,6 +302,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (!docRole) {
       errors.push("กรุณาเลือก Document Role");
     }
+    // ICT Mapping
+      if (ictId === 0 && currentICTOptions.length > 0) {
+        errors.push("กรุณาเลือก ICT Mapping");
+      }
 
     if (!isSelfie && docRole !== "additional_document_mm") {
       // Document Type
@@ -311,31 +332,33 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       if (!formatDate(expiredDate.startDate) && docRole.includes("document")) {
         errors.push("กรุณาเลือก Expired Date");
       }
-
       if (issue_country === "" && currentNationalityOptions.length > 0) {
         errors.push("กรุณาเลือก Issued Country");
       }
 
-      // ICT Mapping
-      if (ictId === 0 && currentICTOptions.length > 0) {
-        errors.push("กรุณาเลือก ICT Mapping");
-      }
     }
 
-    return { isValid: errors.length === 0, errors };
+   return { isValid: errors.length === 0, errors };
+    //return { isValid: false, errors };
   };
 
   // Status logic
   const status = doc.status;
-  const isRejected = status === "Rejected";
+  const isApproved = status === "approved";
+  const isRejected = status === "reject";
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+ 
+
   const checkForChanges = () => {
     // check File
     let checkFile_Change = false;
-    if (rotationAngles[doc.kyc_doc_id] != 0) {
-      checkFile_Change = false;
+    if (rotationAngles[doc.kyc_doc_id] !== undefined && rotationAngles[doc.kyc_doc_id] !== 0) {
+      checkFile_Change = true;
     }
+    const currentIssuedDate = formatDate(issuedDate.startDate);
+    const currentExpiredDate = formatDate(expiredDate.startDate);
+    const originalIssuedDate = doc.issued_date ? formatDate(new Date(doc.issued_date)) : null;
+    const originalExpiredDate = doc.expired_date ? formatDate(new Date(doc.expired_date)) : null;
 
     //check control
     const currentData = {
@@ -344,8 +367,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       position,
       docIdNo,
       ictId,
-      issuedDate: formatDate(issuedDate.startDate),
-      expiredDate: formatDate(expiredDate.startDate),
+      issuedDate: currentIssuedDate,
+      expiredDate: currentExpiredDate,
     };
 
     const originalData = {
@@ -357,21 +380,31 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
       ictId: doc.ict_mapping_id ?? 0,
-      issuedDate: formatDate(issuedDate.startDate),
-      expiredDate: formatDate(expiredDate.startDate),
+      issuedDate: originalIssuedDate,
+      expiredDate: originalExpiredDate,
     };
-
     const hasChanges =
       JSON.stringify(currentData) !== JSON.stringify(originalData);
-    if (hasChanges || checkFile_Change) {
-      setHasUnsavedChanges(true);
-    } else {
-      setHasUnsavedChanges(false);
-    }
+    const shouldShowUnsaved = hasChanges || checkFile_Change;
+    setHasUnsavedChanges(shouldShowUnsaved);
 
     return hasChanges;
   };
+
+  const clearcontrol = () => {
+    setDocType(0);
+    setDocIdNo("");
+    setPosition("");
+    const dateTemp = new Date("");
+    setIssuedDate(initStartDate(dateTemp.getTime() / 1000));
+    setExpiredDate(initStartDate(dateTemp.getTime() / 1000));
+  };
+
   useEffect(() => {
+    if (justSaved) {
+      setJustSaved(false);
+      return;
+    }
     checkForChanges();
   }, [
     docRole,
@@ -379,9 +412,10 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     position,
     docIdNo,
     ictId,
-    issuedDate,
-    expiredDate,
+    issuedDate.startDate,
+    expiredDate.startDate,
     rotationAngles[doc.kyc_doc_id],
+    issue_country,
   ]);
 
   useEffect(() => {
@@ -389,33 +423,39 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       onValidateDocument(validateDocument);
     }
   }, [onValidateDocument, validateDocument]);
+
   return (
     <>
       <tr className="hover:bg-gray-50">
-        <td className="px-3 py-4 sticky left-0 bg-white z-10 border-r">
+        <td className="px-3 py-4 sticky left-0 bg-white z-10 border-r ">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={(e) => onSelectDoc?.(doc.kyc_doc_id, e.target.checked)}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            disabled={doc.status === "approve"}
+            disabled={isApproved || isRejected}
           />
         </td>
         {/* Action Buttons */}
-        <td className="px-3 py-4 sticky left-12 bg-white z-10 border-r">
-          {status === "approve" ? (
+        <td className="px-3 py-4 sticky left-12 bg-white z-10 border-r w-28">
+          {status === "approved" ? (
             <div className="flex justify-center items-center">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           ) : (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full">
               <div className="flex gap-1 justify-center">
                 <div className="relative group">
                   <button
                     onClick={handleSave}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    disabled={!hasUnsavedChanges || isRejected}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      hasUnsavedChanges
+                        ? "text-blue-600 hover:bg-blue-50 cursor-pointer"
+                        : "text-gray-400 cursor-not-allowed opacity-50"
+                    }`}
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="w-3.5 h-3.5" />
                   </button>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                     บันทึกข้อมูล
@@ -426,9 +466,15 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
                   <div className="relative group">
                     <button
                       onClick={handleApprove}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      // className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      disabled={isApproved || isRejected}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isApproved || !isRejected
+                          ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed opacity-50"
+                      }`}
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="w-3.5 h-3.5" />
                     </button>
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                       อนุมัติเอกสาร
@@ -439,36 +485,63 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
               <div className="flex gap-1 justify-center">
                 {onRejectDocument && (
+                  doc.kyc_doc_id !== 0 ?(
                   <div className="relative group">
                     <button
                       onClick={openRejectModal}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      // className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={isApproved || isRejected}
+                       className={`p-1.5 rounded-lg transition-colors ${
+                        isApproved || !isRejected
+                          ? "text-red-600 hover:bg-red-50 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed opacity-50"
+                      }`}
                     >
-                      <XCircle className="w-4 h-4" />
+                      <XCircle className="w-3.5 h-3.5" />
                     </button>
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                       ปฏิเสธเอกสาร
                     </div>
                   </div>
-                )}
-                <div className="relative group">
+                ):(
+                   <div className="relative group">
+                    <button
+                      onClick={onDeleteRow}
+                      // className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      disabled={isApproved || isRejected}
+                       className={`p-1.5 rounded-lg transition-colors text-red-600 hover:bg-red-50 cursor-pointer`}                   
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                      ลบแถว
+                    </div>
+                  </div>
+                ))}
+                {/* <div className="relative group">
                   <button
                     onClick={openRequiredModal}
-                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                    // className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                    disabled={isApproved || isRejected}
+                     className={`p-1.5 rounded-lg transition-colors ${
+                        isApproved || !isRejected
+                          ? "text-orange-600 hover:bg-orange-50 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed opacity-50"
+                      }`}
                   >
-                    <FileWarning className="w-4 h-4" />
+                    <FileWarning className="w-3.5 h-3.5" />
                   </button>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                     ต้องการเพิ่มเติม
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           )}
         </td>
 
         {/* Image */}
-        <td className="px-3 py-4 text-center sticky left-28 bg-white z-10 border-r">
+        <td className="px-3 py-4 text-center sticky left-40 bg-white z-10 border-r w-32">
           {previewUrls[doc.kyc_doc_id] ? (
             <img
               src={previewUrls[doc.kyc_doc_id]}
@@ -477,22 +550,22 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               style={{
                 transform: `rotate(${rotationAngles[doc.kyc_doc_id] ?? 0}deg)`,
               }}
-              onClick={() => onOpenPopup(doc.kyc_doc_id)}
+              onClick={() => onOpenPopup(doc)}
             />
           ) : doc.kyc_doc_id !== 0 && doc.status !== "required" ? (
             <img
-              src={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`}
+              src={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}${imageTimestamps[doc.kyc_doc_id] ? `&t=${imageTimestamps[doc.kyc_doc_id]}` : ''}`}
               alt="doc"
               className="w-20 h-20 object-contain cursor-pointer transition-transform mx-auto"
               style={{
-                transform: `rotate(${rotationAngles[doc.kyc_doc_id] ?? 0}deg)`,
+                transform: `rotate(${rotationAngles[doc.kyc_doc_id] ?? savedRotationAngles[doc.kyc_doc_id] ?? 0}deg)`,
               }}
-              onClick={() => onOpenPopup(doc.kyc_doc_id)}
+              onClick={() => onOpenPopup(doc)}
             />
           ) : (
             <div
               className="text-center text-gray-500 cursor-pointer"
-              onClick={() => onOpenPopup(doc.kyc_doc_id)}
+              onClick={() => onOpenPopup(doc)}
             >
               <FileText className="w-6 h-6 mx-auto mb-1" />
               <p className="text-xs font-medium">IMG</p>
@@ -507,6 +580,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={docRole}
             onChange={handleDocRoleChange}
+            disabled={isApproved || isRejected}
           >
             <option value="" disabled>
               Document Role
@@ -528,7 +602,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className={`select select-ui w-full ${isSelfie ? "opacity-50 cursor-not-allowed" : ""}`}
             value={isSelfie ? "" : docType === 0 ? "" : String(docType)}
             onChange={(e) => setDocType(Number(e.target.value))}
-            disabled={isSelfie}
+            disabled={isSelfie ||  isApproved || isRejected}
           >
             <option value="" disabled>
               Document Type
@@ -547,7 +621,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            disabled={isSelfie}
+            disabled={isSelfie ||  isApproved || isRejected}
           >
             <option value="" disabled>
               Position
@@ -567,7 +641,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             value={docIdNo}
             onChange={(e) => setDocIdNo(e.target.value)}
             noWrapperMargin
-            disabled={isSelfie}
+            disabled={isSelfie || isApproved || isRejected}
           />
         </td>
 
@@ -578,18 +652,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               ref={issueDateRef}
               type="date"
               className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                isSelfie
+                isSelfie ||  isApproved || isRejected
                   ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
                   : "border-[--border-color]"
               }`}
               style={
-                isSelfie
+                isSelfie ||  isApproved || isRejected
                   ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
                   : { border: "1px solid #d1d5db" }
               }
               value={formatDate(issuedDate.startDate) || ""}
               onChange={(e) => handleDateChange(e.target.value, true)}
-              disabled={isSelfie}
+              disabled={isSelfie ||  isApproved || isRejected}
             />
           </div>
         </td>
@@ -601,18 +675,18 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
               ref={expireDateRef}
               type="date"
               className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                isSelfie
+                isSelfie ||  isApproved || isRejected
                   ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
                   : "border-[--border-color]"
               }`}
               style={
-                isSelfie
+                isSelfie ||  isApproved || isRejected
                   ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
                   : { border: "1px solid #d1d5db" }
               }
               value={formatDate(expiredDate.startDate) || ""}
               onChange={(e) => handleDateChange(e.target.value, false)}
-              disabled={isSelfie}
+              disabled={isSelfie ||  isApproved || isRejected}
             />
           </div>
         </td>
@@ -623,7 +697,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={issue_country === "" ? "" : issue_country}
             onChange={(e) => setIssueCountry(e.target.value)}
-            disabled={isSelfie}
+            disabled={isSelfie ||  isApproved || isRejected}
           >
             <option value="" disabled>
               Issue Country
@@ -642,6 +716,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
             onChange={(e) => setICTID(Number(e.target.value))}
+            disabled={isSelfie ||  isApproved || isRejected}
           >
             <option value="" disabled>
               ICT Mapping
@@ -660,7 +735,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
             className={`px-2 py-1 text-xs rounded-full font-medium ${
               status === "review"
                 ? "bg-yellow-100 text-yellow-800"
-                : status === "approve"
+                : status === "Approved by Jadepay"
                   ? "bg-green-100 text-green-800"
                   : status === "reject"
                     ? "bg-red-100 text-red-800"
