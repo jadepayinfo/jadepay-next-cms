@@ -19,7 +19,6 @@ const HomePage: NextPage<Props> = (props) => {
         initPage.current = true;
 
         const info = await axios.get(`/api/staff/info`);
-        console.log('info', info.data);
         setStaff(info.data);
 
         const menu: AccessType[] = info.data?.role?.access ?? [];

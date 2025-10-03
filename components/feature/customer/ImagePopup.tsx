@@ -1,3 +1,4 @@
+import { KycDocument } from "@/model/kyc";
 import { Redo, Undo, Upload } from "lucide-react";
 import { ChangeEvent, FC, useState } from "react";
 
@@ -7,6 +8,8 @@ interface Props {
   onSaveRotation?: (rotation: number) => void;
   onUpload?: (file: File) => void;
   isLoading?: boolean;
+  document?: KycDocument;
+  initialRotation?: number;
 }
 
 const ImagePopup: FC<Props> = ({
@@ -15,8 +18,10 @@ const ImagePopup: FC<Props> = ({
   onSaveRotation,
   onUpload,
   isLoading,
+  document,
+  initialRotation = 0,
 }) => {
-  const [rotation, setRotation] = useState(0);
+  const [rotation, setRotation] = useState(initialRotation);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(
     imageUrl ?? undefined
   );
@@ -53,6 +58,44 @@ const ImagePopup: FC<Props> = ({
           ✕
         </button>
 
+{document && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Document Information
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              {document.document_no && (
+                <div>
+                  <p className="text-gray-500 font-medium">Document No.</p>
+                  <p className="text-gray-900">{document.document_no}</p>
+                </div>
+              )}
+              {document.issue_country && (
+                <div>
+                  <p className="text-gray-500 font-medium">Issue Country</p>
+                  <p className="text-gray-900">{document.issue_country}</p>
+                </div>
+              )}
+              {document.issued_date && (
+                <div>
+                  <p className="text-gray-500 font-medium">Issued Date</p>
+                  <p className="text-gray-900">
+                    {new Date(document.issued_date).toLocaleDateString('en-GB')}
+                  </p>
+                </div>
+              )}
+              {document.expired_date && (
+                <div>
+                  <p className="text-gray-500 font-medium">Expired Date</p>
+                  <p className="text-gray-900">
+                    {new Date(document.expired_date).toLocaleDateString('en-GB')}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-center space-x-2 mb-2">
           <button
             onClick={rotateLeft}

@@ -233,7 +233,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       const uploadCustomers: FileCustomerUpoad[] = [];
       excelData.forEach((row, index) => {
         try {
-          console.log("row :", row);
           const data: FileCustomerUpoad = {
             name: String(row["Name"] || ""),
             phone_number: String(row["Phone Number"] || 0),
@@ -343,7 +342,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       blankrows: false,
       raw: false,
     }) as ExcelRow[];
-    console.log("jsonData : ", jsonData);
     return jsonData;
   };
 
@@ -553,8 +551,10 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <option value="Operation save">Operation save</option>
                   <option value="Approved by Jadepay">Approved by Jadepay</option>
                   <option value="Processing">Processing</option>
+                  <option value="Re-Processing">Re-Processing</option>
                   <option value="Waiting for ICT Approval">Waiting for ICT Approval</option>
                   <option value="KYC completed">KYC completed</option>
+                  <option value="Duplicate">Duplicate</option>
                 </select>
               </div>
               <div className="mt-4 grow">
@@ -622,8 +622,8 @@ const CustomerPage: NextPage<Props> = (props) => {
                       <tr key={index} className="hover border-[--border-color]">
                         <td>
                           {item.kyc_status === "Processing" ||
-                          item.kyc_status === "Waiting for ICT approval" ||
-                          item.kyc_status === "duplicate" ||
+                          item.kyc_status === "Waiting for ICT Approval" ||
+                          item.kyc_status === "Duplicate" ||
                           item.kyc_status === "KYC complete" ? (
                             <div className="w-4 h-4"></div>
                           ) : (
@@ -651,12 +651,13 @@ const CustomerPage: NextPage<Props> = (props) => {
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
                               item.kyc_status === "Waiting for review" ? "bg-yellow-100 text-gray-700":
-                              item.kyc_status === "Operation Save" ? "bg-green-100 text-gray-800":
-                              item.kyc_status === "Approved by Jadepay" ? "bg-green-200 text-gray-800":
+                              item.kyc_status === "Operation save" ? "bg-green-100 text-gray-800":
+                              item.kyc_status === "Approved by Jadepay" ? " bg-green-800 text-white":
                               item.kyc_status === "Processing" ? "bg-blue-100 text-gray-800":
                               item.kyc_status === "Waiting for ICT Approval" ? "bg-blue-200 text-gray-800":
                               item.kyc_status === "KYC completed" ? "bg-blue-900 text-white":
-                              item.kyc_status === "Reject" || item.kyc_status === "duplicate"  ? "bg-red-100 text-red-800"
+                              item.kyc_status === "Re-Processing" ? "bg-red-900 text-white":
+                              item.kyc_status === "Reject" || item.kyc_status === "Duplicate"  ? "bg-red-100 text-red-800"
                                       : "bg-gray-100 text-gray-700"
                             }`}
                           >
@@ -668,7 +669,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                           <div className="flex gap-2">
                             <Link href={`/customer/edit/${item.customer_id}`}>
                               {item.kyc_status === "Approved by Jadepay" ||
-                              item.kyc_status === "duplicate" ||
+                              item.kyc_status === "Duplicate" ||
                               item.kyc_status === "Waiting for ICT Approval" ||
                               item.kyc_status === "KYC Completed" ? (
                                 <ButtonFill
@@ -686,7 +687,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                                 </ButtonFill>
                               )}
                             </Link>
-                            {item.kyc_status === "duplicate" ||
+                            {item.kyc_status === "Duplicate" ||
                             item.kyc_status === "Waiting for ICT Approval" ? (
                               <ButtonFill
                                 className="px-3 py-2 btn-info"
@@ -754,7 +755,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                     </span>
                     <span className="text-gray-400">→</span>
                     {/* Step 4 */}
-                    <span className="px-3 py-1 bg-green-200 text-green-800 rounded-full font-medium text-[12px]">
+                    <span className="px-3 py-1 bg-green-800 text-white rounded-full font-medium text-[12px]">
                       4. Approved by Jadepay
                     </span>
                     <span className="text-gray-400">→</span>

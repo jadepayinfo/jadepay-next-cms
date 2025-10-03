@@ -77,7 +77,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [error, setError] = useState("");
   const [isFormDisabled, setIsFormDisabled] = useState(false);
   // Selfie Image
-  const [selfeIMG, setSelfieIMG] = useState<number | undefined | null>(
+  const [selfeIMG, setSelfieIMG] = useState<KycDocument | undefined | null>(
     undefined
   );
   const [selfeDoc, setSelfieDOC] = useState<KycDocument | undefined | null>(
@@ -206,40 +206,38 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 
   // kyc data
   const [kyc, setKyc] = useState(customerInfo?.kyc_data.kyc_data ?? null);
-  // popup open image & rotation
+  // popup open image
   const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
   const [currentDocId, setCurrentDocId] = useState<number | null>(null);
-  const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
+  const [popupKycDocument, setPopupKycDocument] = useState<KycDocument | undefined>(undefined);
+ const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
     {}
   );
+  const [savedRotationAngles, setSavedRotationAngles] = useState<Record<number, number>>({});
+
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
   const [previewFiles, setPreviewFiles] = useState<Record<number, File>>({});
-  const openPopup = async (docId: number) => {
+  const [imageTimestamps, setImageTimestamps] = useState<Record<number, number>>({});
+  const openPopup = async (doc: KycDocument) => {
     setIsImageLoading(true);
     try {
       let url: string | null = null;
-      if (previewUrls[docId]) {
-        url = previewUrls[docId];
-      } else if (docId === 0) {
+      if (previewUrls[doc.kyc_doc_id]) {
+        url = previewUrls[doc.kyc_doc_id];
+      } else if (doc.kyc_doc_id === 0) {
         url = null;
       } else {
-        const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${docId}`);
+        const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
         if (!resp.ok) throw new Error("Cannot fetch image");
         const blob = await resp.blob();
-
-        const rotation = rotationAngles[docId] ?? 0;
-        if (rotation === 0) {
-          url = URL.createObjectURL(blob);
-        } else {
-          const rotatedBlob = await rotateImage(blob, rotation);
-          url = URL.createObjectURL(rotatedBlob);
-        }
+        url = URL.createObjectURL(blob);
       }
 
       setPopupImageUrl(url);
-      setCurrentDocId(docId);
+      setPopupKycDocument(doc)
+      setCurrentDocId(doc.kyc_doc_id);
       setIsPopupOpen(true);
     } catch (err) {
       alert("โหลดรูปไม่สำเร็จ");
@@ -256,9 +254,11 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     setCurrentDocId(null);
     setIsPopupOpen(false);
   };
-  // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
+
+    // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
   const saveRotation = async (rotation: number) => {
     if (currentDocId === null) return;
+    // rotation ที่ได้มาคือมุมสะสมจาก popup แล้ว (เริ่มจาก savedRotationAngles)
     setRotationAngles((prev) => ({
       ...prev,
       [currentDocId]: rotation,
@@ -290,6 +290,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     try {
       // 1. เตรียมไฟล์สำหรับอัปโหลด
       let fileToUpload: File;
+      let optimisticPreviewUrl: string | null = null;
 
       if (previewFiles[doc.kyc_doc_id]) {
         // ใช้ไฟล์ที่เลือกใหม่
@@ -301,8 +302,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         fileToUpload = new File([blob], originalFile.name, {
           type: originalFile.type,
         });
+        // สร้าง preview URL สำหรับ optimistic update
+        optimisticPreviewUrl = URL.createObjectURL(blob);
       } else {
-        // ดึงจาก backend
+        // ดึงจาก backend พร้อมหมุนตามมุมใหม่ที่หมุนเพิ่ม (ไม่ใช่มุมสะสม)
+        const currentRotation = rotationAngles[doc.kyc_doc_id] ?? 0;
+        const previousSavedRotation = savedRotationAngles[doc.kyc_doc_id] ?? 0;
+        const newRotationOnly = currentRotation - previousSavedRotation;
+
         const resp = await axios.get(
           `/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`,
           {
@@ -311,16 +318,43 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         );
         const blob = resp.data;
         const rotatedBlob =
-          rotation === 0 ? blob : await rotateImage(blob, rotation);
+          newRotationOnly === 0 ? blob : await rotateImage(blob, newRotationOnly);
         fileToUpload = new File(
           [rotatedBlob],
           `document_${doc.kyc_doc_id}.jpg`,
           { type: "image/jpeg" }
         );
+        // สร้าง preview URL สำหรับ optimistic update
+        optimisticPreviewUrl = URL.createObjectURL(rotatedBlob);
       }
       if (fileToUpload.size === 0) {
         alert("โปรดเลือกไฟล์เอกสาร");
         return;
+      }
+
+      // Optimistic Update - แสดงรูปที่หมุนแล้วทันทีก่อนอัปโหลด
+      if (optimisticPreviewUrl) {
+        // ล้าง URL เก่าก่อน (ถ้ามี) เพื่อป้องกัน memory leak
+        const oldUrl = previewUrls[doc.kyc_doc_id];
+        if (oldUrl) {
+          URL.revokeObjectURL(oldUrl);
+        }
+
+        // อัปเดต UI ทันทีโดยการ batch state updates
+        setPreviewUrls((prev) => ({
+          ...prev,
+          [doc.kyc_doc_id]: optimisticPreviewUrl,
+        }));
+        setRotationAngles((prev) => {
+          const newAngles = { ...prev };
+          delete newAngles[doc.kyc_doc_id];
+          return newAngles;
+        });
+        setSavedRotationAngles((prev) => {
+          const newAngles = { ...prev };
+          delete newAngles[doc.kyc_doc_id];
+          return newAngles;
+        });
       }
 
       // 2. กำหนดค่า action และ remark
@@ -354,15 +388,21 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         },
       });
 
-      // setDocuments((prev) =>
-      //   prev.map((doc) =>
-      //     doc.kyc_doc_id === document.kyc_doc_id
-      //       ? { ...doc, action_status: "Review", remark: null, active: true }
-      //       : doc
-      //   )
-      // );
+      // ล้างค่า preview files (preview URL และ rotation ถูกล้างไปแล้วใน optimistic update)
+      setPreviewFiles((prev) => {
+        const newFiles = { ...prev };
+        delete newFiles[doc.kyc_doc_id];
+        return newFiles;
+      });
+
+      // อัปเดต timestamp สำหรับกรณีที่ต้องโหลดจาก backend ใหม่ในอนาคต
+      const timestamp = new Date().getTime();
+      setImageTimestamps((prev) => ({
+        ...prev,
+        [doc.kyc_doc_id]: timestamp,
+      }));
+
       alert("อัปโหลดเอกสารสำเร็จ");
-      //return response.data;
     } catch (error) {
       alert("อัปโหลดเอกสารล้มเหลว");
     } finally {
@@ -823,15 +863,20 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       };
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
-
-      const allApproved = documents.every((doc) => doc.status === "approved");
-      if (!allApproved) {
+      
+      const allApproved = documents.every((doc) => doc.status === "approved"||doc.status === "reject");
+      if (!allApproved) {       
         //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
         alert("เอกสารยังอนุมัติไม่เรียบร้อย");
         setLoading(false);
         return;
       }
-
+      const approvedCount = documents.filter((doc) => doc.status != "approved"&& doc.status != "reject").length;
+      if( approvedCount >0){
+        alert("ไม่มีเอกสารที่อนุมัติ");
+        setLoading(false);
+        return;
+      }
       const response = await axios.post("/api/customer/update-customer-info", {
         customer,
         customer_address,
@@ -972,7 +1017,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     const selfieDoc = customerInfo?.kyc_data.kyc_documents?.find(
       (d) => d.document_info === "Selfie"
     );
-    setSelfieIMG(selfieDoc?.kyc_doc_id ?? null);
+    setSelfieIMG(selfieDoc ?? null);
     setSelfieDOC(selfieDoc);
   }, []);
 
@@ -1002,34 +1047,31 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           <div className="relative flex flex-col items-center">
             <div className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-2">
-              {previewUrls[selfeIMG ?? 0] ? (
+              {previewUrls[selfeIMG?.kyc_doc_id ?? 0] ? (
                 // กรณีมี preview image (ไฟล์ที่เลือกใหม่)
                 <img
-                  src={previewUrls[selfeIMG ?? 0]}
+                  src={previewUrls[selfeIMG?.kyc_doc_id ?? 0]}
                   alt="selfie preview"
                   className="w-32 h-32 object-contain cursor-pointer transition-transform mx-auto"
                   style={{
-                    transform: `rotate(${rotationAngles[selfeIMG ?? 0] ?? 0}deg)`,
+                    transform: `rotate(${rotationAngles[selfeIMG?.kyc_doc_id ?? 0] ?? 0}deg)`,
                   }}
-                  onClick={() => openPopup(selfeIMG ?? 0)}
+                  onClick={() => selfeIMG && openPopup(selfeIMG)}
                 />
-              ) : selfeIMG && selfeIMG !== 0 ? (
+              ) : selfeIMG && selfeIMG?.kyc_doc_id !== 0 ? (
                 // กรณีมี selfie ใน database แล้ว
                 <img
-                  src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG}`}
+                  src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG?.kyc_doc_id}${imageTimestamps[selfeIMG.kyc_doc_id] ? `&t=${imageTimestamps[selfeIMG.kyc_doc_id]}` : ''}`}
                   alt="selfie"
                   className="w-32 h-32 object-contain cursor-pointer transition-transform mx-auto"
                   style={{
-                    transform: `rotate(${rotationAngles[selfeIMG] || 0}deg)`,
+                    transform: `rotate(${rotationAngles[selfeIMG.kyc_doc_id] ?? savedRotationAngles[selfeIMG.kyc_doc_id] ?? 0}deg)`,
                   }}
                   onClick={() => openPopup(selfeIMG)}
                 />
               ) : (
                 // กรณียังไม่มี selfie (placeholder)
-                <div
-                  className="text-center text-gray-500 cursor-pointer"
-                  onClick={() => openPopup(0)} // ใช้ 0 สำหรับ placeholder
-                >
+                <div className="text-center text-gray-500">
                   <User className="w-6 h-6 mx-auto mb-1" />
                   <p className="text-xs font-medium">IMG</p>
                   <p className="text-xxs">selfie</p>
@@ -1550,7 +1592,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           documents={documents}
           openPopup={openPopup}
           rotationAngles={rotationAngles}
+          savedRotationAngles={savedRotationAngles}
           previewUrls={previewUrls}
+          imageTimestamps={imageTimestamps}
           country=""
           closePopup={closePopup}
           saveRotation={saveRotation}
@@ -1600,6 +1644,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           onSaveRotation={saveRotation}
           onUpload={handleUploadFromPopup}
           isLoading={isImageLoading}
+          document={popupKycDocument}
+          initialRotation={currentDocId !== null ? (savedRotationAngles[currentDocId] ?? 0) : 0}
         />
       )}
 
