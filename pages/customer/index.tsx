@@ -233,7 +233,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       const uploadCustomers: FileCustomerUpoad[] = [];
       excelData.forEach((row, index) => {
         try {
-          console.log("row :", row);
           const data: FileCustomerUpoad = {
             name: String(row["Name"] || ""),
             phone_number: String(row["Phone Number"] || 0),
@@ -343,7 +342,6 @@ const CustomerPage: NextPage<Props> = (props) => {
       blankrows: false,
       raw: false,
     }) as ExcelRow[];
-    console.log("jsonData : ", jsonData);
     return jsonData;
   };
 

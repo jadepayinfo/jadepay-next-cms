@@ -332,16 +332,10 @@ const [justSaved, setJustSaved] = useState(false);
       if (!formatDate(expiredDate.startDate) && docRole.includes("document")) {
         errors.push("กรุณาเลือก Expired Date");
       }
-
-      console.log("issue_country : ",issue_country)
-      console.log("issue_councurrentNationalityOptions.lengthtry : ",currentNationalityOptions.length)
       if (issue_country === "" && currentNationalityOptions.length > 0) {
         errors.push("กรุณาเลือก Issued Country");
       }
 
-       console.log("ictId : ",ictId)
-      console.log("issue_councurrentNaticurrentICTOptionsonalityOptions.lengthtry : ",currentICTOptions.length)
-      
     }
 
    return { isValid: errors.length === 0, errors };
