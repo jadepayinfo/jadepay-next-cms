@@ -126,6 +126,8 @@ const CustomerPage: NextPage<Props> = (props) => {
     setFilterUsername("");
     setFilterName("");
     setDateRange(initDateRange());
+    setStatus("");
+    setSource("");
     refPage.current = 1;
     handleFilter();
   };
@@ -547,7 +549,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                   </option>
                   <option value="All">All</option>
                   <option value="Pending">Pending</option>
-                  <option value="Wait for review">Waiting for review</option>
+                  <option value="Waiting for review">Waiting for review</option>
                   <option value="Operation save">Operation save</option>
                   <option value="Approved by Jadepay">Approved by Jadepay</option>
                   <option value="Processing">Processing</option>
@@ -751,7 +753,7 @@ const CustomerPage: NextPage<Props> = (props) => {
 
                     {/* Step 3 */}
                     <span className="px-3 py-1 bg-green-100 text-gray-800 rounded-full font-medium text-[12px]">
-                      3. Operation Save
+                      3. Operation save
                     </span>
                     <span className="text-gray-400">→</span>
                     {/* Step 4 */}
