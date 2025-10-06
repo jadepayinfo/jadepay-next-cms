@@ -31,7 +31,7 @@ const Error: NextPage = () => {
         if (checkAccessDashboard) {
           redirect = '/dashboard';
         } else {
-          redirect = '/staff/ownerprofile';
+          redirect = '/user/ownerprofile';
         }
         setLoadingAccessMenu(false);
       } catch (err: any) {
@@ -61,7 +61,7 @@ const Error: NextPage = () => {
     let textPage = '';
     if (redirect == '/dashboard') {
       textPage = 'dashboard page';
-    } else if (redirect == '/staff/ownerprofile') {
+    } else if (redirect == '/user/ownerprofile') {
       textPage = 'Owner profile page';
     }
 
@@ -69,7 +69,7 @@ const Error: NextPage = () => {
       <Link legacyBehavior href={redirect as Url}>
         <span className="text-primary cursor-pointer">
           {redirect == '/dashboard' ||
-          redirect == '/staff/ownerprofile'
+          redirect == '/user/ownerprofile'
             ? textPage
             : 'Login page'}
         </span>

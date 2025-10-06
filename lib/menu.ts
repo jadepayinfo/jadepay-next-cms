@@ -43,7 +43,7 @@ export const RawDataMenu: SidebarMenuType[] = [
 export const RawUserDataMenu: SidebarMenuType[] = [
     {
         menuName: 'owner_profile',
-        path: '/staff/ownerprofile',
+        path: '/user/ownerprofile',
         title: 'Owner Profile',
         isActive: false,
         icon: '',

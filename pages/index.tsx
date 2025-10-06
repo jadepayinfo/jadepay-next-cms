@@ -29,7 +29,7 @@ const HomePage: NextPage<Props> = (props) => {
         if (checkaAccessDashboard) {
           router.replace('/dashboard');
         } else {
-          router.replace('/staff/ownerprofile');
+          router.replace('/user/ownerprofile');
         }
         
       } catch (err: any) {
