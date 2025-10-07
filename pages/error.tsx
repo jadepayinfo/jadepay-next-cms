@@ -15,7 +15,7 @@ const Error: NextPage = () => {
   const message = router.query.message ?? 'Authentication error' as string | undefined;
   let redirect = router.query.redirect ?? '/login' as string | undefined | Url;
 
-  const { staff } = useAuth();
+ // const { staff } = useAuth();
 
 
   useEffect(() => {
@@ -55,7 +55,7 @@ const Error: NextPage = () => {
     return () => {
       clearInterval(counterInterval);
     };
-  }, [counter, router, staff]);
+  }, [counter, router]);
 
   const DisplayPage = () => {
     let textPage = '';

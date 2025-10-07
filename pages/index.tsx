@@ -11,7 +11,6 @@ const HomePage: NextPage<Props> = (props) => {
   const router = useRouter();
   const initPage = useRef<boolean>(false);
 
-  const { setStaff } = useAuth();
 
   useEffect(() => {
     const getLoadData = async () => {
@@ -19,7 +18,7 @@ const HomePage: NextPage<Props> = (props) => {
         initPage.current = true;
 
         const info = await axios.get(`/api/staff/info`);
-        setStaff(info.data);
+       // setStaff(info.data);
 
         const menu: AccessType[] = info.data?.role?.access ?? [];
         const checkaAccessDashboard = menu.find(

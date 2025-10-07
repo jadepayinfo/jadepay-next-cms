@@ -24,12 +24,7 @@ const StaffChangePassword = (props: Props) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const onSubmit = async () => {
-    console.log('username :', props.user?.Username);
-    console.log('currentpassword : ', currentpassword);
-    console.log('newpassword : ', newpassword);
-    console.log('confirmpassword : ', confirmpassword);
-    
+  const onSubmit = async () => {    
     //validation
     if(currentpassword === '' || newpassword === '' || confirmpassword === ''){
       debugger;
@@ -63,7 +58,6 @@ const StaffChangePassword = (props: Props) => {
       setLoading(true);
       res = await axios.post('/api/authen/changepassword', playload);
       const { success, status, status_detail } = res.data;
-      console.log('res change password : ', res.data);
 
       if (success && status === 1) {
         setLoading(false);
