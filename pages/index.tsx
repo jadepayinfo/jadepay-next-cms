@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/context/auth_context';
 import axios from 'axios';
-import { AccessType } from '@/model/staff_info';
+import { AccessType } from '@/model/user_info';
 
 interface Props {}
 const HomePage: NextPage<Props> = (props) => {

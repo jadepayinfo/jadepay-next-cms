@@ -5,7 +5,7 @@ import Navbar from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import Cookies from "js-cookie";
 import { TOKEN_APP } from "@/lib/constant";
-import { StaffInfoType } from "@/model/staff_info";
+import { StaffInfoType } from "@/model/user_info";
 import { useAuth } from "@/context/auth_context";
 import ThemeMenu from "@/components/layout/theme_menu";
 import { Footer } from "@/components/layout/footer";

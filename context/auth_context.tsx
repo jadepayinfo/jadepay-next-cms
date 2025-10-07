@@ -5,7 +5,7 @@ import {
   ROOT,
   TOKEN_APP
 } from '@/lib/constant';
-import { StaffInfoType } from '@/model/staff_info';
+import { UserInfoType } from '@/model/user_info';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/router';
 import {
@@ -20,8 +20,8 @@ import {
 
 type AuthContextInitialState = {
   token: string;
-  staff?: StaffInfoType;
-  setStaff: Dispatch<SetStateAction<StaffInfoType | undefined>>;
+  user?: UserInfoType;
+  setUser: Dispatch<SetStateAction<UserInfoType | undefined>>;
   setToken: Dispatch<SetStateAction<string>>;
   isAuthenticated: Boolean;
   logout: Function;
@@ -38,7 +38,7 @@ export default function AuthProvider(props: { children: ReactNode }) {
 
   const tokenAPP = Cookies.get(TOKEN_APP) as string;
 
-  const [staff, setStaff] = useState<StaffInfoType>();
+  const [user, setUser] = useState<UserInfoType>();
   const [token, setToken] = useState<string>(tokenAPP);
 
   const removeCookiesAuth: Function = useCallback(() => {
@@ -91,8 +91,8 @@ export default function AuthProvider(props: { children: ReactNode }) {
   };
 
   const value: AuthContextInitialState = {
-    staff,
-    setStaff,
+    user,
+    setUser,
     token,
     isAuthenticated: !!tokenAPP,
     setToken,
@@ -106,7 +106,6 @@ export default function AuthProvider(props: { children: ReactNode }) {
 
 export function useAuth() {
   const authContext = useContext(AuthContext);
-
   if (!authContext)
     throw new Error("This hook must be called within 'AuthContext'");
 

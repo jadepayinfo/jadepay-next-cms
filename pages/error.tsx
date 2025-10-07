@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/auth_context';
-import { AccessType } from '@/model/staff_info';
+import { AccessType } from '@/model/user_info';
 import axios from 'axios';
 import { NextPage } from 'next';
 import { Url } from 'next/dist/shared/lib/router/router';

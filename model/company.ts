@@ -1,4 +1,4 @@
-import { StaffInfoType } from "./staff_info";
+import { StaffInfoType } from "./user_info";
 
 export interface Company {
     id: string;

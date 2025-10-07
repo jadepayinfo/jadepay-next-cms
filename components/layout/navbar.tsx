@@ -58,14 +58,13 @@ const ButtonOpenSidebar = () => {
 };
 
 const UserMenu = () => {
-  const { staff, logout } = useAuth();
-
+  const { user, logout } = useAuth();
   const { userMenu } = useMenu();
 
   return (
     <div className="dropdown dropdown-end">
       <div className="flex justify-center items-center">
-        <div>{staff?.username}</div>
+        <div>{user?.Username}</div>
         <label tabIndex={0} className="btn btn-ghost btn-circle side-menu">
           <div className="aspect-square rounded-full">
             <IconUser className="text-2xl" />

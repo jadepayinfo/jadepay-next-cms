@@ -3,62 +3,38 @@ import withAuth from "@/hoc/with_auth";
 import { useAuth } from "@/context/auth_context";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import StaffChangePassword from "@/components/feature/user/Form/changepassword";
+import UserChangePassword from "@/components/feature/user/Form/changepassword";
 import CountUp from "react-countup";
 
 import { IconCoin, IconLock } from "@/components/icon";
 import Breadcrumbs from "@/components/layout/breadcrumbs";
 import ButtonFill from "@/components/buttons/button_fill";
 
-import { StaffInfoType } from "@/model/staff_info";
+import { UserInfoType } from "@/model/user_info";
 
 interface Props {
-  balance: number;
   user: string;
 }
 const UserOwnerProfilePage: NextPage<Props> = (props) => {
-  const { staff } = useAuth();
+  const { user } = useAuth();
   const [balance, setBalance] = useState(0);
   const [changePassword, setChangePassword] = useState<
-    StaffInfoType | undefined
+    UserInfoType | undefined
   >();
 
   const initPage = useRef<boolean>(false);
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
-    useEffect(() => {
-    //   const getBalance = async () => {
-    //     try {
-    //       initPage.current = true;
-    //       let params: any = {
-    //         owner_id: staff?.platform_id
-    //       };
-    //       const res = await axios.get('/api/wallet/getwallettoken', { params });
-    //       const { data } = res;
-    //       setBalance(data?.balance ?? 0);
-    //       setLoading(false);
-    //     } catch (err: any) {
-    //       console.log('err', err);
-    //       setError(err.response.data.message ?? err.response.statusText);
-    //     } finally {
-    //       setLoading(false);
-    //     }
-    //   };
-
-    //   if (loading && staff) {
-    //     getBalance();
-    //   }
-      setLoading(false);
-    }, [loading, staff]);
+   
 
   const onBack = () => {
     setChangePassword(undefined);
   };
 
   if (changePassword != undefined) {
-    return <StaffChangePassword staff={staff} onBack={onBack} />;
+    return <UserChangePassword user={user} onBack={onBack} />;
   }
 
   return (
@@ -75,7 +51,7 @@ const UserOwnerProfilePage: NextPage<Props> = (props) => {
         {loading ? (
           <LoadingContent />
         ) : (
-          <div className="flex flex-col gap-6 justify-center mx-auto max-w-md">
+          <div className="flex flex-col gap-6 justify-center mx-auto max-w-md pt-7">
             {/* <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5 ">
               <div className="flex flex-wrap justify-center items-center  ">
                 <h2 className="card-title">
@@ -93,18 +69,18 @@ const UserOwnerProfilePage: NextPage<Props> = (props) => {
                 )}
               </div>
             </div> */}
-            <div className="p-4 flex flex-col gap-2 bg-[--bg-panel] border border-[--border-color] rounded-md">
-              <div className="flex flex-wrap justify-between items-center">
-                <div className="font-semibold">Name :</div>
-                <div>{staff?.username}</div>
+            <div className="p-6 flex flex-col gap-4 bg-[--bg-panel] border border-[--border-color] rounded-md">
+              <div className="flex items-center gap-3">
+                <div className="font-semibold min-w-[80px]">Name:</div>
+                <div className="flex-1">{user?.Name}</div>
               </div>
-              <div className="flex flex-wrap justify-between items-center ">
-                <div className="font-semibold">Role :</div>
-                <div>{staff?.role?.role_name}</div>
-              </div>
-              <div className="flex flex-wrap justify-center items-center">
-                <ButtonFill size="md" onClick={() => setChangePassword(staff)}>
-                  <IconLock className="text-[16px]" />{" "}
+               <div className="flex items-center gap-3">
+                <div className="font-semibold min-w-[80px]">Role:</div>
+                <div className="flex-1">{user?.Role}</div>
+              </div> 
+              <div className="flex justify-center pt-2">
+                <ButtonFill size="md" onClick={() => setChangePassword(user)}>
+                  <IconLock className="text-[16px]" />
                   <span>Change Password</span>
                 </ButtonFill>
               </div>

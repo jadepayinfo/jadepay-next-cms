@@ -21,7 +21,7 @@ const LoginPage: NextPage<Props> = (props) => {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { setStaff } = useAuth();
+  const { setUser } = useAuth();
 
   const submitButtonHandler: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -43,7 +43,6 @@ const LoginPage: NextPage<Props> = (props) => {
         username,
         password
       });
-      console.log("response : ", response.data.data)
 
       if (response.data.data?.token?.access_token == null) {
         setErr(response.data.status_detail);
@@ -53,6 +52,10 @@ const LoginPage: NextPage<Props> = (props) => {
       if (response.data.data?.token?.access_token) {
         const token = response.data.data.token.access_token;
         Cookies.set(TOKEN_APP, token);
+
+        // set user to context
+       
+        setUser(response.data.data.user_admin);
         router.replace('/customer');
         setLoading(false);
 

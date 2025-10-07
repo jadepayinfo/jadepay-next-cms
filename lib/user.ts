@@ -1,5 +1,5 @@
 
-import { StaffInfoType } from "@/model/staff_info";
+import { StaffInfoType } from "@/model/user_info";
 import { COMPANY_ADMIN, COMPANY_PLATFORM_ADMIN, COMPANY_PLATFORM_STAFF, ROOT } from "./constant";
 
 export const codictionActionLevel = (
