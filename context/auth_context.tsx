@@ -77,17 +77,17 @@ export default function AuthProvider(props: { children: ReactNode }) {
       }
     ];
 
-    let levelProcress: any = [];
+    let levelProgress: any = [];
 
     if (levelUser === ROOT) {
       RawLevelData = RawLevelData.filter((level) => level.value !== ROOT);
-      levelProcress = RawLevelData;
+      levelProgress = RawLevelData;
     } else {
       const findLevel = RawLevelData.find((level) => level.value === levelUser);
-      levelProcress = RawLevelData.filter((role) => role.key >= findLevel!.key);
+      levelProgress = RawLevelData.filter((role) => role.key >= findLevel!.key);
     }
 
-    return levelProcress?.map((role: any) => role.value) as string[];
+    return levelProgress?.map((role: any) => role.value) as string[];
   };
 
   const value: AuthContextInitialState = {

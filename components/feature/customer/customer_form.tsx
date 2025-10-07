@@ -295,10 +295,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       if (previewFiles[doc.kyc_doc_id]) {
         // ใช้ไฟล์ที่เลือกใหม่
         const originalFile = previewFiles[doc.kyc_doc_id];
-        const blob =
+        let blob =
           rotation === 0
             ? originalFile
             : await rotateImage(originalFile, rotation);
+
+        // Resize รูปภาพก่อน upload
+        blob = await resizeImage(blob);
+
         fileToUpload = new File([blob], originalFile.name, {
           type: originalFile.type,
         });
@@ -316,16 +320,19 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
             responseType: "blob", // สำคัญ! ต้องระบุเป็น blob
           }
         );
-        const blob = resp.data;
-        const rotatedBlob =
-          newRotationOnly === 0 ? blob : await rotateImage(blob, newRotationOnly);
+        let blob = resp.data;
+        blob = newRotationOnly === 0 ? blob : await rotateImage(blob, newRotationOnly);
+
+        // Resize รูปภาพก่อน upload
+        blob = await resizeImage(blob);
+
         fileToUpload = new File(
-          [rotatedBlob],
+          [blob],
           `document_${doc.kyc_doc_id}.jpg`,
           { type: "image/jpeg" }
         );
         // สร้าง preview URL สำหรับ optimistic update
-        optimisticPreviewUrl = URL.createObjectURL(rotatedBlob);
+        optimisticPreviewUrl = URL.createObjectURL(blob);
       }
       if (fileToUpload.size === 0) {
         alert("โปรดเลือกไฟล์เอกสาร");
@@ -1660,6 +1667,89 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     </>
   );
 };
+
+export async function resizeImage(
+  blob: Blob,
+  maxWidth: number = 1920,
+  maxHeight: number = 1920,
+  maxSizeMB: number = 1
+): Promise<Blob> {
+  const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+  // ถ้ารูปมีขนาดไม่เกิน 1 MB อยู่แล้ว ให้ return ต้นฉบับ
+  if (blob.size <= maxSizeBytes) {
+    return blob;
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = async () => {
+      let width = img.width;
+      let height = img.height;
+
+      // คำนวณขนาดใหม่โดยรักษา aspect ratio
+      if (width > maxWidth || height > maxHeight) {
+        const aspectRatio = width / height;
+        if (width > height) {
+          width = maxWidth;
+          height = width / aspectRatio;
+        } else {
+          height = maxHeight;
+          width = height * aspectRatio;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) return reject("Canvas context not available");
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // ลด quality แบบ dynamic จนกว่าจะได้ขนาดไม่เกิน maxSizeMB
+      let quality = 0.9;
+      let resizedBlob: Blob | null = null;
+
+      const tryCompress = (q: number): Promise<Blob | null> => {
+        return new Promise((resolveCompress) => {
+          canvas.toBlob(
+            (blob) => {
+              resolveCompress(blob);
+            },
+            "image/jpeg",
+            q
+          );
+        });
+      };
+
+      // ลองลด quality ทีละ 0.1 จนกว่าจะได้ขนาดที่ต้องการ
+      while (quality > 0.1) {
+        resizedBlob = await tryCompress(quality);
+        if (resizedBlob && resizedBlob.size <= maxSizeBytes) {
+          break;
+        }
+        quality -= 0.1;
+      }
+
+      // ถ้ายังใหญ่เกินไป ให้ลดขนาดภาพลง
+      if (resizedBlob && resizedBlob.size > maxSizeBytes) {
+        const scaleFactor = Math.sqrt(maxSizeBytes / resizedBlob.size);
+        canvas.width = Math.floor(width * scaleFactor);
+        canvas.height = Math.floor(height * scaleFactor);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resizedBlob = await tryCompress(0.8);
+      }
+
+      if (resizedBlob) resolve(resizedBlob);
+      else reject("Failed to create blob from canvas");
+    };
+
+    img.onerror = reject;
+    img.src = URL.createObjectURL(blob);
+  });
+}
 
 export async function rotateImage(blob: Blob, rotation: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
