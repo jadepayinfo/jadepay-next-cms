@@ -4,14 +4,13 @@ import { useRouter } from 'next/router';
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/context/auth_context';
 import axios from 'axios';
-import { AccessType } from '@/model/staff_info';
+import { AccessType } from '@/model/user_info';
 
 interface Props {}
 const HomePage: NextPage<Props> = (props) => {
   const router = useRouter();
   const initPage = useRef<boolean>(false);
 
-  const { setStaff } = useAuth();
 
   useEffect(() => {
     const getLoadData = async () => {
@@ -19,7 +18,7 @@ const HomePage: NextPage<Props> = (props) => {
         initPage.current = true;
 
         const info = await axios.get(`/api/staff/info`);
-        setStaff(info.data);
+       // setStaff(info.data);
 
         const menu: AccessType[] = info.data?.role?.access ?? [];
         const checkaAccessDashboard = menu.find(
@@ -29,7 +28,7 @@ const HomePage: NextPage<Props> = (props) => {
         if (checkaAccessDashboard) {
           router.replace('/dashboard');
         } else {
-          router.replace('/staff/ownerprofile');
+          router.replace('/user/ownerprofile');
         }
         
       } catch (err: any) {

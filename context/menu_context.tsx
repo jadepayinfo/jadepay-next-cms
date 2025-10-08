@@ -1,6 +1,6 @@
 import { RawDataMenu, RawUserDataMenu } from '@/lib/menu';
 import { MenuType, SidebarMenuType } from '@/model/menu';
-import { AccessType, StaffInfoType } from '@/model/staff_info';
+import { AccessType, StaffInfoType } from '@/model/user_info';
 import {
   Dispatch,
   SetStateAction,

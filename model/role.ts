@@ -1,4 +1,4 @@
-import { AccessType } from "./staff_info";
+import { AccessType } from "./user_info";
 
 export type RoleListType = {
     id: string;

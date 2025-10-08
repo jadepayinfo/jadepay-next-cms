@@ -145,6 +145,8 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 
   const formatDate = (date: Date | null | undefined): string | null => {
     if (!date) return null;
+    // Check if date is valid
+    if (isNaN(date.getTime())) return null;
     return date.toISOString().split("T")[0];
   };
 
@@ -160,9 +162,26 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   };
 
   const handleDateChange = (value: string, isIssued: boolean) => {
+    if (!value) {
+      // Handle empty input
+      const emptyDateState = { startDate: null, endDate: null };
+      if (isIssued) {
+        setIssuedDate(emptyDateState as any);
+      } else {
+        setExpiredDate(emptyDateState as any);
+      }
+      return;
+    }
+
     const selectedDate = new Date(value);
+
+    // Check if valid date
+    if (isNaN(selectedDate.getTime())) {
+      return;
+    }
+
     const currentDateState = isIssued ? issuedDate : expiredDate;
-    const currentDate = new Date(currentDateState.startDate!);
+    const currentDate = currentDateState.startDate ? new Date(currentDateState.startDate) : new Date();
 
     selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
     const newDateState = { startDate: selectedDate, endDate: selectedDate };
