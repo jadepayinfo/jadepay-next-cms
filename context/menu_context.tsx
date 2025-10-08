@@ -1,6 +1,6 @@
 import { RawDataMenu, RawUserDataMenu } from '@/lib/menu';
 import { MenuType, SidebarMenuType } from '@/model/menu';
-import { AccessType, StaffInfoType } from '@/model/user_info';
+import { AccessType, UserInfoType } from '@/model/user_info';
 import {
   Dispatch,
   SetStateAction,
@@ -14,7 +14,7 @@ type MenuContextInitialState = {
   setIsIconMenu: Dispatch<SetStateAction<boolean>>;
   isHamburgerMenu: boolean;
   setIsHamburgerMenu: Dispatch<SetStateAction<boolean>>;
-  verifyMenuRole: (path: string, data: StaffInfoType) => boolean;
+  verifyMenuRole: (path: string, data: UserInfoType | null | undefined) => boolean;
   sidebarMenu: SidebarMenuType[];
   userMenu: SidebarMenuType[];
   currentRole: AccessType | undefined;
@@ -44,51 +44,51 @@ export default function MenuProvider(props: { children: React.ReactNode }) {
 
   const [menuKey, setMenuKey] = useState<object>();
 
-  const verifyMenuRole = (path: string, data: StaffInfoType) => {
-    let hasPermission = false;
-    try {
-      const accessMenu = data.role.access;
-      setCurrentPath(path);
+  const verifyMenuRole = (path: string, data: UserInfoType | null | undefined) => {
+   let hasPermission = false;
+  //   try {
+  //     const accessMenu = data.Role;
+  //     setCurrentPath(path);
 
-      // trim action edit create
-      const rolePath = filterMainAccessPlath(path);
+  //     // trim action edit create
+  //     const rolePath = filterMainAccessPlath(path);
 
-      // เมนูที่อยู่ตรง ส่วนของ Sidebar
-      const fullDataMenu = menuMappingWithRoleAccess(
-        rolePath,
-        RawDataMenu,
-        accessMenu
-      );
-      setSidebarMenu(fullDataMenu);
+  //     // เมนูที่อยู่ตรง ส่วนของ Sidebar
+  //     const fullDataMenu = menuMappingWithRoleAccess(
+  //       rolePath,
+  //       RawDataMenu,
+  //       accessMenu
+  //     );
+  //     setSidebarMenu(fullDataMenu);
 
-      //  เมนูที่อยู่ตรง ส่วนของ User
-      const fullMenuUser = menuUserMappingWithRoleAccess(
-        rolePath,
-        RawUserDataMenu,
-        accessMenu
-      );
+  //     //  เมนูที่อยู่ตรง ส่วนของ User
+  //     const fullMenuUser = menuUserMappingWithRoleAccess(
+  //       rolePath,
+  //       RawUserDataMenu,
+  //       accessMenu
+  //     );
 
-      setUserMenu(fullMenuUser);
+  //     setUserMenu(fullMenuUser);
 
-      // mapping menu key
-      const menuKeyFull = mapppingMenuTitleWithKey(fullDataMenu, fullMenuUser);
-      setMenuKey(menuKeyFull);
+  //     // mapping menu key
+  //     const menuKeyFull = mapppingMenuTitleWithKey(fullDataMenu, fullMenuUser);
+  //     setMenuKey(menuKeyFull);
 
-      // ค้นหา read, write role ของ เมนูต่างๆ
-      if (path.indexOf('/create') !== -1 || path.indexOf('/edit') !== -1|| path.indexOf('/view') !== -1) {
-        hasPermission = true;
-      } else {
-        hasPermission = findRoleWithMenu(accessMenu);
-      }
+  //     // ค้นหา read, write role ของ เมนูต่างๆ
+  //     if (path.indexOf('/create') !== -1 || path.indexOf('/edit') !== -1|| path.indexOf('/view') !== -1) {
+  //       hasPermission = true;
+  //     } else {
+  //       hasPermission = findRoleWithMenu(accessMenu);
+  //     }
 
-      //is Dev Path
-      if (process.env.NODE_ENV === 'development' && devPath.includes(path)) {
-        hasPermission = true;
-      }
-    } catch (error) {
-      // throw new Error("This hook must be called within 'AuthContext'");
-    }
-    return hasPermission;
+  //     //is Dev Path
+  //     if (process.env.NODE_ENV === 'development' && devPath.includes(path)) {
+  //       hasPermission = true;
+  //     }
+  //   } catch (error) {
+  //     // throw new Error("This hook must be called within 'AuthContext'");
+  //   }
+     return hasPermission;
   };
 
   const filterMainAccessPlath = (path: string) => {

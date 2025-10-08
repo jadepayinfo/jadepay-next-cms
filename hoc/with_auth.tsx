@@ -5,7 +5,7 @@ import Navbar from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import Cookies from "js-cookie";
 import { TOKEN_APP } from "@/lib/constant";
-import { StaffInfoType } from "@/model/user_info";
+import { UserInfoType } from "@/model/user_info";
 import { useAuth } from "@/context/auth_context";
 import ThemeMenu from "@/components/layout/theme_menu";
 import { Footer } from "@/components/layout/footer";
@@ -24,7 +24,7 @@ const withAuth = (WrappedComponent: FunctionComponent & any) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const { setStaff } = useAuth();
+    const { setUser } = useAuth();
     const { setIsHamburgerMenu, verifyMenuRole, currentMenu } = useMenu();
     const initMenu = useRef<SidebarMenuType | undefined>(undefined);
 
