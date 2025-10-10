@@ -35,6 +35,7 @@ interface DocumentRowProps {
     additional: SelectOption[];
     ictMapping: SelectOption[];
     nationality: SelectOption[];
+    selfie: SelectOption[];
   };
   optionsLoaded: boolean;
   isSelected?: boolean;
@@ -111,9 +112,11 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   // Document states
   const [docRole, setDocRole] = useState(() => {
     const initial = doc.document_info || "";
-    return (
-      initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country)
-    );
+    const normalized = initial.toLowerCase();
+    if (normalized === "selfie") {
+      return normalized;
+    }
+    return normalized + "_" + getCountryCode(country);
   });
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
@@ -140,11 +143,14 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (docRole.includes("primary")) return globalOptions.primary;
     else if (docRole.includes("secondary")) return globalOptions.secondary;
     else if (docRole.includes("additional")) return globalOptions.additional;
+    else if (docRole.includes("selfie")) return globalOptions.selfie;
     else return [];
   };
 
   const formatDate = (date: Date | null | undefined): string | null => {
     if (!date) return null;
+    // Check if date is valid
+    if (isNaN(date.getTime())) return null;
     return date.toISOString().split("T")[0];
   };
 
@@ -160,9 +166,26 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   };
 
   const handleDateChange = (value: string, isIssued: boolean) => {
+    if (!value) {
+      // Handle empty input
+      const emptyDateState = { startDate: null, endDate: null };
+      if (isIssued) {
+        setIssuedDate(emptyDateState as any);
+      } else {
+        setExpiredDate(emptyDateState as any);
+      }
+      return;
+    }
+
     const selectedDate = new Date(value);
+
+    // Check if valid date
+    if (isNaN(selectedDate.getTime())) {
+      return;
+    }
+
     const currentDateState = isIssued ? issuedDate : expiredDate;
-    const currentDate = new Date(currentDateState.startDate!);
+    const currentDate = currentDateState.startDate ? new Date(currentDateState.startDate) : new Date();
 
     selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
     const newDateState = { startDate: selectedDate, endDate: selectedDate };
@@ -585,7 +608,7 @@ const [justSaved, setJustSaved] = useState(false);
             <option value="" disabled>
               Document Role
             </option>
-            <option value={`selfie${mappedCountry}`}>Selfie</option>
+            <option value={`selfie`}>Selfie</option>
             <option value={`primary_document_${mappedCountry}`}>Primary</option>
             <option value={`secondary_document_${mappedCountry}`}>
               Secondary
@@ -599,12 +622,12 @@ const [justSaved, setJustSaved] = useState(false);
         {/* Document Type */}
         <td className="px-3 py-4">
           <select
-            className={`select select-ui w-full ${isSelfie ? "opacity-50 cursor-not-allowed" : ""}`}
-            value={isSelfie ? "" : docType === 0 ? "" : String(docType)}
+            className={`select select-ui w-full `}
+            value={ docType === 0 ? "" : String(docType)}
             onChange={(e) => setDocType(Number(e.target.value))}
-            disabled={isSelfie ||  isApproved || isRejected}
+            disabled={ isApproved || isRejected}
           >
-            <option value="" disabled>
+            <option value="" >
               Document Type
             </option>
             {currentDocOptions?.map((item) => (
@@ -621,7 +644,7 @@ const [justSaved, setJustSaved] = useState(false);
             className="select select-ui w-full"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            disabled={isSelfie ||  isApproved || isRejected}
+            disabled={  isApproved || isRejected}
           >
             <option value="" disabled>
               Position
@@ -711,12 +734,12 @@ const [justSaved, setJustSaved] = useState(false);
         </td>
 
         {/* ICT Mapping */}
-        <td className="px-3 py-4">
+        <td className="px-3 py-4">å
           <select
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
             onChange={(e) => setICTID(Number(e.target.value))}
-            disabled={isSelfie ||  isApproved || isRejected}
+            disabled={  isApproved || isRejected}
           >
             <option value="" disabled>
               ICT Mapping

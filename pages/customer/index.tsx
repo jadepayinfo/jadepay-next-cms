@@ -126,6 +126,8 @@ const CustomerPage: NextPage<Props> = (props) => {
     setFilterUsername("");
     setFilterName("");
     setDateRange(initDateRange());
+    setStatus("");
+    setSource("");
     refPage.current = 1;
     handleFilter();
   };
@@ -547,7 +549,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                   </option>
                   <option value="All">All</option>
                   <option value="Pending">Pending</option>
-                  <option value="Wait for review">Waiting for review</option>
+                  <option value="wait for review">Waiting for review</option>
                   <option value="Operation save">Operation save</option>
                   <option value="Approved by Jadepay">Approved by Jadepay</option>
                   <option value="Processing">Processing</option>
@@ -650,7 +652,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.kyc_status === "Waiting for review" ? "bg-yellow-100 text-gray-700":
+                              item.kyc_status === "wait for review" ? "bg-yellow-100 text-gray-700":
                               item.kyc_status === "Operation save" ? "bg-green-100 text-gray-800":
                               item.kyc_status === "Approved by Jadepay" ? " bg-green-800 text-white":
                               item.kyc_status === "Processing" ? "bg-blue-100 text-gray-800":
@@ -661,7 +663,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                                       : "bg-gray-100 text-gray-700"
                             }`}
                           >
-                            {item.kyc_status}
+                            {item.kyc_status === "wait for review" ? "Waiting for review" : item.kyc_status}
                           </span>
                         </td>
                         <td>{item.source}</td>
@@ -751,7 +753,7 @@ const CustomerPage: NextPage<Props> = (props) => {
 
                     {/* Step 3 */}
                     <span className="px-3 py-1 bg-green-100 text-gray-800 rounded-full font-medium text-[12px]">
-                      3. Operation Save
+                      3. Operation save
                     </span>
                     <span className="text-gray-400">→</span>
                     {/* Step 4 */}

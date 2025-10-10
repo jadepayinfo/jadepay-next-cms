@@ -68,12 +68,14 @@ const DocumentTable: React.FC<Props> = ({
     additional: SelectOption[];
     ictMapping: SelectOption[];
     nationality: SelectOption[];
+    selfie: SelectOption[];
   }>({
     primary: [],
     secondary: [],
     additional: [],
     ictMapping: [],
     nationality: [],
+    selfie:[]
   });
   const [optionsLoaded, setOptionsLoaded] = useState(false);
   // multi approve
@@ -202,6 +204,7 @@ const DocumentTable: React.FC<Props> = ({
           additional: mapToOptions(resAdditional.data),
           ictMapping: mapToOptions(respICTMapping.data),
           nationality: mapToOptions(resNationality.data),
+          selfie: [{value:310,label:"Scan Face"}]
         });
 
         setOptionsLoaded(true);

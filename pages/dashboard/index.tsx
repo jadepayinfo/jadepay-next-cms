@@ -6,13 +6,13 @@ import { useEffect, useRef } from 'react';
 
 interface Props {}
 const DashBoardPage: NextPage<Props> = (props) => {
-  const { staff } = useAuth();
+  const { user } = useAuth();
 
   const initPage = useRef<boolean>(false);
 
   useEffect(() => {
     initPage.current = true;
-  }, [staff]);
+  }, [user]);
 
   if (!initPage.current) {
     return (
@@ -22,15 +22,15 @@ const DashBoardPage: NextPage<Props> = (props) => {
     );
   }
 
-  if (staff?.role.level === 'ROOT') {
-    return (
-      <>
-        <div className="p-4">
+  // if (user?.role.level === 'ROOT') {
+  //   return (
+  //     <>
+  //       <div className="p-4">
           
-        </div>
-      </>
-    );
-  }
+  //       </div>
+  //     </>
+  //   );
+  // }
 
   return (
     <>

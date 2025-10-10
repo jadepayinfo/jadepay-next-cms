@@ -1,4 +1,4 @@
-import { StaffInfoType } from "./staff_info";
+//import { StaffInfoType } from "./user_info";
 
 export interface Company {
     id: string;
@@ -10,7 +10,7 @@ export interface Company {
     tel: string;
     platform?: Platform[];
     image?: string;
-    staff?:StaffInfoType[];
+  //  staff?:StaffInfoType[];
     total_staff: number;
     CreatedAt?: string;
     UpdatedAt?: string;

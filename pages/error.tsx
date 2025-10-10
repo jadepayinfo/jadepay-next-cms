@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/auth_context';
-import { AccessType } from '@/model/staff_info';
+import { AccessType } from '@/model/user_info';
 import axios from 'axios';
 import { NextPage } from 'next';
 import { Url } from 'next/dist/shared/lib/router/router';
@@ -15,7 +15,7 @@ const Error: NextPage = () => {
   const message = router.query.message ?? 'Authentication error' as string | undefined;
   let redirect = router.query.redirect ?? '/login' as string | undefined | Url;
 
-  const { staff } = useAuth();
+ // const { staff } = useAuth();
 
 
   useEffect(() => {
@@ -31,7 +31,7 @@ const Error: NextPage = () => {
         if (checkAccessDashboard) {
           redirect = '/dashboard';
         } else {
-          redirect = '/staff/ownerprofile';
+          redirect = '/user/ownerprofile';
         }
         setLoadingAccessMenu(false);
       } catch (err: any) {
@@ -55,13 +55,13 @@ const Error: NextPage = () => {
     return () => {
       clearInterval(counterInterval);
     };
-  }, [counter, router, staff]);
+  }, [counter, router]);
 
   const DisplayPage = () => {
     let textPage = '';
     if (redirect == '/dashboard') {
       textPage = 'dashboard page';
-    } else if (redirect == '/staff/ownerprofile') {
+    } else if (redirect == '/user/ownerprofile') {
       textPage = 'Owner profile page';
     }
 
@@ -69,7 +69,7 @@ const Error: NextPage = () => {
       <Link legacyBehavior href={redirect as Url}>
         <span className="text-primary cursor-pointer">
           {redirect == '/dashboard' ||
-          redirect == '/staff/ownerprofile'
+          redirect == '/user/ownerprofile'
             ? textPage
             : 'Login page'}
         </span>
