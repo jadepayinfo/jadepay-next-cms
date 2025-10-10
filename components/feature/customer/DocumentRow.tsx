@@ -716,7 +716,7 @@ const [justSaved, setJustSaved] = useState(false);
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
             onChange={(e) => setICTID(Number(e.target.value))}
-            disabled={isSelfie ||  isApproved || isRejected}
+            disabled={isApproved || isRejected}
           >
             <option value="" disabled>
               ICT Mapping

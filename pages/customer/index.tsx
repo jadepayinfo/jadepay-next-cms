@@ -652,7 +652,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.kyc_status === "Waiting for review" ? "bg-yellow-100 text-gray-700":
+                              item.kyc_status === "wait for review" ? "bg-yellow-100 text-gray-700":
                               item.kyc_status === "Operation save" ? "bg-green-100 text-gray-800":
                               item.kyc_status === "Approved by Jadepay" ? " bg-green-800 text-white":
                               item.kyc_status === "Processing" ? "bg-blue-100 text-gray-800":
