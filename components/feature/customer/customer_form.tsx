@@ -226,7 +226,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       let url: string | null = null;
       if (previewUrls[doc.kyc_doc_id]) {
         url = previewUrls[doc.kyc_doc_id];
-      } else if (doc.kyc_doc_id === 0) {
+      } else if (doc.kyc_doc_id <= 0) {
         url = null;
       } else {
         const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
@@ -287,6 +287,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     remark?: string
   ) => {
     setIsDocumentActionLoading(true);
+    const originalKycDocId = doc.kyc_doc_id;
+    const docIndex = (doc as any)._docIndex ?? -1; // รับ index ที่ส่งมาจาก DocumentRow
     try {
       // 1. เตรียมไฟล์สำหรับอัปโหลด
       let fileToUpload: File;
@@ -388,10 +390,29 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         },
       });
 
-      // ล้างค่า preview files (preview URL และ rotation ถูกล้างไปแล้วใน optimistic update)
+      const newKycDocId = response.data.Body.data.kyc_doc_id;
+      // กำหนด final kyc_doc_id ที่จะใช้ (ใช้ค่าใหม่ถ้ามี ไม่เช่นนั้นใช้ค่าเดิม)
+      const finalKycDocId = newKycDocId || doc.kyc_doc_id;
+
+      // อัปเดต kyc_doc_id ใน documents state (รองรับทั้ง 0 และ temporary ID ที่เป็น negative)
+      if (originalKycDocId <= 0 && newKycDocId && docIndex !== -1) {
+        setDocuments((prev) => {
+          const updated = [...prev];
+          // อัปเดตด้วย index โดยตรง
+          updated[docIndex] = { ...updated[docIndex], kyc_doc_id: newKycDocId };
+          return updated;
+        });
+
+        // อัปเดต doc object ให้มีค่า kyc_doc_id ใหม่
+        doc.kyc_doc_id = newKycDocId;
+      }
+
+      // ล้างค่า preview files โดยใช้ kyc_doc_id เดิมก่อน (ถ้ามีการเปลี่ยน key)
       setPreviewFiles((prev) => {
         const newFiles = { ...prev };
-        delete newFiles[doc.kyc_doc_id];
+        // ลบทั้ง old key (0) และ new key (ถ้าเปลี่ยน)
+        delete newFiles[0];
+        delete newFiles[finalKycDocId];
         return newFiles;
       });
 
@@ -399,7 +420,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       const timestamp = new Date().getTime();
       setImageTimestamps((prev) => ({
         ...prev,
-        [doc.kyc_doc_id]: timestamp,
+        [finalKycDocId]: timestamp,
       }));
 
       alert("อัปโหลดเอกสารสำเร็จ");
@@ -574,19 +595,22 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   };
 
   const addNewDocument = () => {
+    // สร้าง temporary ID ที่ unique สำหรับ document ใหม่ (ใช้ negative number เพื่อไม่ซ้ำกับ ID จริง)
+    const tempId = -Date.now();
+
     setDocuments((prev) => [
       ...prev,
       {
-        kyc_doc_id: 0,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id, // default ถ้ายังไม่มี
-        doc_type: "", // default type
+        kyc_doc_id: tempId,
+        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        doc_type: "selfie",
         document_no: "",
         position: "",
         issued_date: null,
         expired_date: null,
-        document_info: "",
+        document_info: "selfie",
         url: "",
-        action: "request", // default action
+        action: "request",
         user_id: customerInfo?.customer_data.customer.user_id,
         rotationAngle: 0,
         doctype_id: 0,
@@ -1058,7 +1082,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                   }}
                   onClick={() => selfeIMG && openPopup(selfeIMG)}
                 />
-              ) : selfeIMG && selfeIMG?.kyc_doc_id !== 0 ? (
+              ) : selfeIMG && selfeIMG?.kyc_doc_id > 0 ? (
                 // กรณีมี selfie ใน database แล้ว
                 <img
                   src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG?.kyc_doc_id}${imageTimestamps[selfeIMG.kyc_doc_id] ? `&t=${imageTimestamps[selfeIMG.kyc_doc_id]}` : ''}`}

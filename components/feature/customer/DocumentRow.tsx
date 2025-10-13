@@ -35,6 +35,7 @@ interface DocumentRowProps {
     additional: SelectOption[];
     ictMapping: SelectOption[];
     nationality: SelectOption[];
+    selfie: SelectOption[];
   };
   optionsLoaded: boolean;
   isSelected?: boolean;
@@ -107,13 +108,14 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [showRequiredModal, setShowRequiredModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
-
   // Document states
   const [docRole, setDocRole] = useState(() => {
     const initial = doc.document_info || "";
-    return (
-      initial.toLowerCase().replace(/ /g, "_") + "_" + getCountryCode(country)
-    );
+    const normalized = initial.toLowerCase();
+    if (normalized === "selfie") {
+      return normalized;
+    }
+    return normalized.replace(/ /g, "_") + "_" + getCountryCode(country);
   });
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
@@ -140,11 +142,14 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (docRole.includes("primary")) return globalOptions.primary;
     else if (docRole.includes("secondary")) return globalOptions.secondary;
     else if (docRole.includes("additional")) return globalOptions.additional;
+    else if (docRole.includes("selfie")) return globalOptions.selfie;
     else return [];
   };
 
   const formatDate = (date: Date | null | undefined): string | null => {
     if (!date) return null;
+    // Check if date is valid
+    if (isNaN(date.getTime())) return null;
     return date.toISOString().split("T")[0];
   };
 
@@ -160,9 +165,26 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   };
 
   const handleDateChange = (value: string, isIssued: boolean) => {
+    if (!value) {
+      // Handle empty input
+      const emptyDateState = { startDate: null, endDate: null };
+      if (isIssued) {
+        setIssuedDate(emptyDateState as any);
+      } else {
+        setExpiredDate(emptyDateState as any);
+      }
+      return;
+    }
+
     const selectedDate = new Date(value);
+
+    // Check if valid date
+    if (isNaN(selectedDate.getTime())) {
+      return;
+    }
+
     const currentDateState = isIssued ? issuedDate : expiredDate;
-    const currentDate = new Date(currentDateState.startDate!);
+    const currentDate = currentDateState.startDate ? new Date(currentDateState.startDate) : new Date();
 
     selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
     const newDateState = { startDate: selectedDate, endDate: selectedDate };
@@ -192,7 +214,7 @@ const [justSaved, setJustSaved] = useState(false);
       status: "review",
       issue_country: issue_country,
     };
-
+    (updated as any)._docIndex = index; // ส่ง index ไปด้วย
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
   };
 
@@ -289,7 +311,6 @@ const [justSaved, setJustSaved] = useState(false);
           ict_mapping_id: ictId,
           status: "approved",
         };
-
         await onApproveDocument(updated);
       } catch (error) {}
     }
@@ -485,7 +506,7 @@ const [justSaved, setJustSaved] = useState(false);
 
               <div className="flex gap-1 justify-center">
                 {onRejectDocument && (
-                  doc.kyc_doc_id !== 0 ?(
+                  doc.kyc_doc_id > 0 ?(
                   <div className="relative group">
                     <button
                       onClick={openRejectModal}
@@ -552,7 +573,7 @@ const [justSaved, setJustSaved] = useState(false);
               }}
               onClick={() => onOpenPopup(doc)}
             />
-          ) : doc.kyc_doc_id !== 0 && doc.status !== "required" ? (
+          ) : doc.kyc_doc_id > 0 && doc.status !== "required" ? (
             <img
               src={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}${imageTimestamps[doc.kyc_doc_id] ? `&t=${imageTimestamps[doc.kyc_doc_id]}` : ''}`}
               alt="doc"
@@ -585,7 +606,7 @@ const [justSaved, setJustSaved] = useState(false);
             <option value="" disabled>
               Document Role
             </option>
-            <option value={`selfie${mappedCountry}`}>Selfie</option>
+            <option value={`selfie`}>Selfie</option>
             <option value={`primary_document_${mappedCountry}`}>Primary</option>
             <option value={`secondary_document_${mappedCountry}`}>
               Secondary
@@ -599,12 +620,12 @@ const [justSaved, setJustSaved] = useState(false);
         {/* Document Type */}
         <td className="px-3 py-4">
           <select
-            className={`select select-ui w-full ${isSelfie ? "opacity-50 cursor-not-allowed" : ""}`}
-            value={isSelfie ? "" : docType === 0 ? "" : String(docType)}
+            className={`select select-ui w-full `}
+            value={ docType === 0 ? "" : String(docType)}
             onChange={(e) => setDocType(Number(e.target.value))}
-            disabled={isSelfie ||  isApproved || isRejected}
+            disabled={ isApproved || isRejected}
           >
-            <option value="" disabled>
+            <option value="" >
               Document Type
             </option>
             {currentDocOptions?.map((item) => (
@@ -621,7 +642,7 @@ const [justSaved, setJustSaved] = useState(false);
             className="select select-ui w-full"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            disabled={isSelfie ||  isApproved || isRejected}
+            disabled={  isApproved || isRejected}
           >
             <option value="" disabled>
               Position
