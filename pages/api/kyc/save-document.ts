@@ -129,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // ส่งผลลัพธ์กลับ client
-    res.status(response.status).json(response.data);
+    res.status(response.status).json(response.data.data);
 
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Internal Server Error" });

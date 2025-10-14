@@ -108,7 +108,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [showRequiredModal, setShowRequiredModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
-
   // Document states
   const [docRole, setDocRole] = useState(() => {
     const initial = doc.document_info || "";
@@ -116,7 +115,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (normalized === "selfie") {
       return normalized;
     }
-    return normalized + "_" + getCountryCode(country);
+    return normalized.replace(/ /g, "_") + "_" + getCountryCode(country);
   });
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
@@ -151,7 +150,11 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     if (!date) return null;
     // Check if date is valid
     if (isNaN(date.getTime())) return null;
-    return date.toISOString().split("T")[0];
+    //return date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Computed values
@@ -177,7 +180,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
       return;
     }
 
-    const selectedDate = new Date(value);
+    //const selectedDate = new Date(value);
+    const [year, month, day] = value.split('-').map(Number);
+    const selectedDate = new Date(year, month - 1, day);
 
     // Check if valid date
     if (isNaN(selectedDate.getTime())) {
@@ -215,7 +220,7 @@ const [justSaved, setJustSaved] = useState(false);
       status: "review",
       issue_country: issue_country,
     };
-
+    (updated as any)._docIndex = index; // ส่ง index ไปด้วย
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
   };
 
@@ -312,7 +317,6 @@ const [justSaved, setJustSaved] = useState(false);
           ict_mapping_id: ictId,
           status: "approved",
         };
-
         await onApproveDocument(updated);
       } catch (error) {}
     }
@@ -508,7 +512,7 @@ const [justSaved, setJustSaved] = useState(false);
 
               <div className="flex gap-1 justify-center">
                 {onRejectDocument && (
-                  doc.kyc_doc_id !== 0 ?(
+                  doc.kyc_doc_id > 0 ?(
                   <div className="relative group">
                     <button
                       onClick={openRejectModal}
@@ -575,7 +579,7 @@ const [justSaved, setJustSaved] = useState(false);
               }}
               onClick={() => onOpenPopup(doc)}
             />
-          ) : doc.kyc_doc_id !== 0 && doc.status !== "required" ? (
+          ) : doc.kyc_doc_id > 0 && doc.status !== "required" ? (
             <img
               src={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}${imageTimestamps[doc.kyc_doc_id] ? `&t=${imageTimestamps[doc.kyc_doc_id]}` : ''}`}
               alt="doc"
