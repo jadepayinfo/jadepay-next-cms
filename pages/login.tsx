@@ -43,7 +43,6 @@ const LoginPage: NextPage<Props> = (props) => {
         username,
         password
       });
-      console.log("response : ", response.data.data)
 
       if (response.data.data?.token?.access_token == null) {
         setErr(response.data.status_detail);
