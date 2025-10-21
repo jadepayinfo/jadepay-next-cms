@@ -75,7 +75,7 @@ const DocumentTable: React.FC<Props> = ({
     additional: [],
     ictMapping: [],
     nationality: [],
-    selfie:[]
+    selfie: [],
   });
   const [optionsLoaded, setOptionsLoaded] = useState(false);
   // multi approve
@@ -305,7 +305,7 @@ const DocumentTable: React.FC<Props> = ({
             <tbody>
               {documents.map((doc, index) => (
                 <DocumentRow
-                  key={doc.kyc_doc_id}
+                  key={`doc-${index}`}
                   doc={doc}
                   index={index}
                   country={country}
