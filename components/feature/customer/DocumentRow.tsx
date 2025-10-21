@@ -748,7 +748,7 @@ const [justSaved, setJustSaved] = useState(false);
         </td>
 
         {/* ICT Mapping */}
-        <td className="px-3 py-4">å
+        <td className="px-3 py-4">
           <select
             className="select select-ui w-full"
             value={ictId === 0 ? "" : String(ictId)}
