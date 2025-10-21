@@ -6,8 +6,6 @@ import {
   Save,
   CheckCircle,
   XCircle,
-  Archive,
-  RotateCcw,
   AlertCircle,
   Info,
   FileWarning,
@@ -205,6 +203,13 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 const [justSaved, setJustSaved] = useState(false);
 
   const handleSave = () => {
+
+    const validation = validateDocument();
+    if (!validation.isValid) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วน:\n\n" + validation.errors.join("\n"));
+      return;
+    }
+
     setHasUnsavedChanges(false);
     setJustSaved(true);
 
