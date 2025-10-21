@@ -330,8 +330,13 @@ const [justSaved, setJustSaved] = useState(false);
       errors.push("กรุณาเลือก Document Role");
     }
     // ICT Mapping
-      if (ictId === 0 && currentICTOptions.length > 0) {
-        errors.push("กรุณาเลือก ICT Mapping");
+    if (ictId === 0 && currentICTOptions.length > 0) {
+      errors.push("กรุณาเลือก ICT Mapping");
+    }
+
+    // Position
+      if (!position ) {       
+        errors.push("กรุณาเลือก Position");
       }
 
     if (!isSelfie && docRole !== "additional_document_mm") {
