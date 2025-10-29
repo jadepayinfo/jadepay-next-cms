@@ -73,10 +73,10 @@ const SingleContainer: NextPage<Props> = () => {
       return;
     }
 
-    // Check file size (10MB = 10 * 1024 * 1024 bytes)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Check file size (5MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`File size exceeds 10MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      alert(`File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
       e.target.value = ''; // Reset input
       return;
     }
@@ -278,7 +278,7 @@ const SingleContainer: NextPage<Props> = () => {
             <p className="text-gray-600 font-medium mb-2">
               Click to upload or drag and drop
             </p>
-            <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+            <p className="text-sm text-gray-500">PNG, JPG, GIF up to 5MB</p>
             <input
               type="file"
               accept="image/*"

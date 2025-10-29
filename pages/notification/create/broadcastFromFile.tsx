@@ -65,11 +65,11 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
       return;
     }
 
-    // Check file size (10MB = 10 * 1024 * 1024 bytes)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Check file size (5MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       alert(
-        `File size exceeds 10MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`
+        `File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`
       );
       e.target.value = ""; // Reset input
       return;
@@ -325,7 +325,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
               <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG, GIF up to 10MB
+                PNG, JPG, GIF up to 5MB
               </p>
               <input
                 type="file"
