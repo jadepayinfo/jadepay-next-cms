@@ -20,15 +20,15 @@ export const RawDataMenu: SidebarMenuType[] = [
         disable: true,
         sub: []
     },
-    {
-        menuName: '',
-        path: '/staff',
-        title: 'Staff',
-        isActive: false,
-        icon: 'team',
-        disable: true,
-        sub: []
-    },    
+    // {
+    //     menuName: '',
+    //     path: '/staff',
+    //     title: 'Staff',
+    //     isActive: false,
+    //     icon: 'team',
+    //     disable: true,
+    //     sub: []
+    // },    
     {
         menuName: 'notification',
         path: '/notification',
