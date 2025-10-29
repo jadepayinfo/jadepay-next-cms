@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import { useState, ChangeEvent } from "react";
 import axios from "axios";
 import { Customer } from "@/model/customer";
-import withAuth from "@/hoc/with_auth";
+import ButtonFill from "@/components/buttons/button_fill";
 
 
 interface Props {}
@@ -22,6 +22,7 @@ const SingleContainer: NextPage<Props> = () => {
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleSearchCustomer = async () => {
     if (!searchQuery.trim()) {
@@ -64,6 +65,23 @@ const SingleContainer: NextPage<Props> = () => {
 
     const file = e.target.files[0];
 
+    // Check file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload only PNG, JPG, or GIF files');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Check file size (5MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert(`File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    setIsUploadingImage(true);
     try {
       const uploadedUrl = await uploadImage(file);
       console.log("uploadedUrl:", uploadedUrl);
@@ -71,6 +89,8 @@ const SingleContainer: NextPage<Props> = () => {
     } catch (error) {
       console.error("Image upload failed:", error);
       alert("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -240,7 +260,17 @@ const SingleContainer: NextPage<Props> = () => {
           Size Recommendation: 800×600 px or 1200×630 px
         </p>
 
-        {!attachedImage ? (
+        {isUploadingImage ? (
+          <div className="border-2 border-dashed border-blue-300 rounded-lg p-12 flex flex-col items-center justify-center bg-blue-50">
+            <div className="text-6xl mb-4 animate-pulse" aria-hidden="true">
+              ⏳
+            </div>
+            <p className="text-blue-600 font-medium mb-2">
+              Uploading image...
+            </p>
+            <p className="text-sm text-gray-500">Please wait</p>
+          </div>
+        ) : !attachedImage ? (
           <label className="border-2 border-dashed border-gray-300 rounded-lg p-12 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
             <div className="text-6xl mb-4" aria-hidden="true">
               🖼️
@@ -248,13 +278,14 @@ const SingleContainer: NextPage<Props> = () => {
             <p className="text-gray-600 font-medium mb-2">
               Click to upload or drag and drop
             </p>
-            <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+            <p className="text-sm text-gray-500">PNG, JPG, GIF up to 5MB</p>
             <input
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
               className="hidden"
               aria-label="Upload image"
+              disabled={isUploadingImage}
             />
           </label>
         ) : (
@@ -348,7 +379,7 @@ const SingleContainer: NextPage<Props> = () => {
           </p>
         </div>
       )}
-
+            
       {/* Action Buttons */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button

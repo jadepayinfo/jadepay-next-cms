@@ -17,6 +17,7 @@ const BroadcastContainer: NextPage<Props> = (props) => {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastImages, setBroadcastImages] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleBroadcastImageUpload = async (
     e: ChangeEvent<HTMLInputElement>
@@ -25,12 +26,30 @@ const BroadcastContainer: NextPage<Props> = (props) => {
 
     const file = e.target.files[0];
 
+    // Check file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload only PNG, JPG, or GIF files');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Check file size (5MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert(`File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      e.target.value = ''; // Reset input
+      return;
+    }
+    setIsUploadingImage(true);
     try {
       const uploadedUrl = await uploadImage(file);
       setBroadcastImages(uploadedUrl);
     } catch (error) {
       console.error("Image upload failed:", error);
       alert("Failed to upload image. Please try again.");
+    }finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -203,12 +222,22 @@ const BroadcastContainer: NextPage<Props> = (props) => {
             Attach Images (Optional)
           </h3>
 
-          {!broadcastImages ? (
+          {isUploadingImage ? (
+          <div className="border-2 border-dashed border-blue-300 rounded-lg p-12 flex flex-col items-center justify-center bg-blue-50">
+            <div className="text-6xl mb-4 animate-pulse" aria-hidden="true">
+              ⏳
+            </div>
+            <p className="text-blue-600 font-medium mb-2">
+              Uploading image...
+            </p>
+            <p className="text-sm text-gray-500">Please wait</p>
+          </div>
+        ) : !broadcastImages ? (
             <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
               <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG, GIF up to 10MB
+                PNG, JPG, GIF up to 5MB
               </p>
               <input
                 type="file"
