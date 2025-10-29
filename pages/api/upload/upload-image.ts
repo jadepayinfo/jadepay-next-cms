@@ -11,7 +11,7 @@ export const config = {
 }
 
 const parseForm = (req:NextApiRequest) => {
-  const form = formidable();
+  const form = formidable({ multiples: true });
   return new Promise<any>(
     function (resolve, reject) {
       form.parse(req, (err, fields, files) => {
@@ -28,42 +28,39 @@ export default async function handler(
   try {
     const data = await parseForm(req);
 
-    const file = data.files.file?.[0];
+    // Formidable v3+ returns files as array directly
+    const fileArray = data.files.file;
+    const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
 
-    const newFileName = file ? `${file.filepath}.${file.originalFilename.split('.').pop()}` : null;
-
-    if (!file || !newFileName) {
-      return res.status(400).json({ success: false, message: 'ไม่ได้อัปโหลดไฟล์' });
+    if (!file) {
+      throw new Error('No file uploaded');
     }
+
+    const newFileName = `${file.filepath}.${file.originalFilename.split('.').pop()}`;
 
     fs.copyFileSync(file.filepath, newFileName)
 
     const formData = new FormData()
     formData.append('file', fs.createReadStream(newFileName))
 
-    if (data.fields?.prefix?.[0] != null) {
-      formData.append('prefix', data.fields.prefix[0])
+    // Handle prefix field
+    const prefix = data.fields?.prefix;
+    const prefixValue = Array.isArray(prefix) ? prefix[0] : prefix;
+    if (prefixValue != null) {
+      formData.append('prefix', prefixValue)
     }
-
-    // เพิ่มการจัดการ Field 'step' ถ้ามี
-    if (data.fields?.step?.[0] != null) {
-      formData.append('step', data.fields.step[0]);
-    }
-
 
     const accessToken = req.cookies['token']
-
     const headers = {
       'Authorization': `Bearer ${accessToken}`,
       ...formData.getHeaders()
     }
-    // const response = await Backend.post(`/api/v1/kyc/upload-kyc-doc`, formData, { headers })
-    // console.log("Backend Response:", response.data); // Log Response ที่ได้จาก Backend
-    // fs.unlinkSync(newFileName)
-    // res.json(response.data)
-    res.json("")
+    
+    const response = await Backend.post(`/api/v1/upload/upload-image`, formData, { headers })
+    fs.unlinkSync(newFileName)
+    res.json(response.data)
   } catch (error: any) {
-    console.log('upload', error)
+    console.error('Upload error:', error.response?.data || error.message)
     res
       .status(500)
       .send({
