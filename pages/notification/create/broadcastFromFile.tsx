@@ -27,9 +27,10 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
-        const rows = text.split("\n").map((row) => row.split(","));
+        const rows = text.split("\n").filter((row) => row.trim() !== "").map((row) => row.split(","));
+        console.log("Parsed CSV rows:", rows);
         setCsvData(rows);
-        setCsvPreview(rows.slice(0, 4)); // First 4 rows for preview
+        setCsvPreview(rows);
       };
       reader.readAsText(file);
     }
@@ -247,7 +248,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
               {csvPreview.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                    Preview (First 3 rows):
+                    Preview of CSV Data:
                   </h4>
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full text-sm">
