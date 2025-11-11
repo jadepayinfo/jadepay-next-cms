@@ -603,7 +603,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 
   const addNewDocument = () => {
     // สร้าง temporary ID ที่ unique สำหรับ document ใหม่ (ใช้ negative number เพื่อไม่ซ้ำกับ ID จริง)
-    const tempId = -Date.now();
+    // ใช้เฉพาะ milliseconds ส่วนท้ายเพื่อไม่เกินขอบเขต int4 (-2,147,483,648 ถึง 2,147,483,647)
+    const tempId = -(Date.now() % 2147483647);
 
     setDocuments((prev) => [
       ...prev,
