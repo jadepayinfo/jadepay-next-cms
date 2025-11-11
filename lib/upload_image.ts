@@ -4,9 +4,15 @@ export const uploadImage = async (file: File, prefix?: string): Promise<string> 
     const formData = new FormData();
     formData.append('file', file, file.name);
     if (prefix) formData.append('prefix', `${prefix}`);
-    const response = await axios.post('/api/upload', formData);
-    const { s3_location } = response.data.data;
-    return s3_location ?? '';
+
+    const response = await axios.post('/api/upload/upload-image', formData);
+
+    // Handle different response structures
+    const data = response.data.data ;
+
+    const s3_location = data;
+
+    return s3_location;
 };
 
 export const base64ToFile = (base64String: string, filename: string): File | null => {
