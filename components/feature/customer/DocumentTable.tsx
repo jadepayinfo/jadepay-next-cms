@@ -39,7 +39,7 @@ const getCountryCode = (country: string): string => {
     case "THA":
       return "th";
     default:
-      return "mm";
+      return "";
   }
 };
 
@@ -169,6 +169,10 @@ const DocumentTable: React.FC<Props> = ({
 
       try {
         const mappedCountry = getCountryCode(country);
+        if (!mappedCountry) {
+          console.warn("Unsupported country code for document options:", country);
+          return;
+        }
         const [
           resPrimary,
           resSecondary,
@@ -215,6 +219,10 @@ const DocumentTable: React.FC<Props> = ({
 
     loadGlobalOptions();
   }, [country, optionsLoaded]);
+
+  useEffect(() => {
+  setOptionsLoaded(false);
+}, [country]);
 
   return (
     <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
