@@ -110,6 +110,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [docRole, setDocRole] = useState(() => {
     const initial = doc.document_info || "";
     const normalized = initial.toLowerCase();
+    
     if (normalized === "selfie") {
       return normalized;
     }
