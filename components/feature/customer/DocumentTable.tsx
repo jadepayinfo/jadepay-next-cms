@@ -77,6 +77,7 @@ const DocumentTable: React.FC<Props> = ({
     nationality: [],
     selfie: [],
   });
+
   const [optionsLoaded, setOptionsLoaded] = useState(false);
   // multi approve
   const [selectedDocs, setSelectedDocs] = useState<Set<number>>(new Set());
@@ -84,6 +85,8 @@ const DocumentTable: React.FC<Props> = ({
   const validationRefs = useRef<
     Record<number, () => { isValid: boolean; errors: string[] }>
   >({});
+
+   const [countryCode, setCountryCode] = useState("");
 
   // handlers approve
   const handleSelectDoc = (docId: number, checked: boolean) => {
@@ -173,6 +176,7 @@ const DocumentTable: React.FC<Props> = ({
           console.warn("Unsupported country code for document options:", country);
           return;
         }
+        setCountryCode(mappedCountry)
         const [
           resPrimary,
           resSecondary,
@@ -316,7 +320,7 @@ const DocumentTable: React.FC<Props> = ({
                   key={`doc-${index}`}
                   doc={doc}
                   index={index}
-                  country={country}
+                  country={countryCode}
                   rotationAngles={rotationAngles}
                   savedRotationAngles={savedRotationAngles}
                   previewUrls={previewUrls}
