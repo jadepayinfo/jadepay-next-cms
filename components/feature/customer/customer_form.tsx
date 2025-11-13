@@ -1627,7 +1627,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           savedRotationAngles={savedRotationAngles}
           previewUrls={previewUrls}
           imageTimestamps={imageTimestamps}
-          country=""
+          country={ownerNationality?.ict_id ?? ""}
           closePopup={closePopup}
           saveRotation={saveRotation}
           handleSaveDocument={handleSaveDocument}
