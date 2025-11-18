@@ -393,6 +393,11 @@ const [justSaved, setJustSaved] = useState(false);
     if (rotationAngles[doc.kyc_doc_id] !== undefined && rotationAngles[doc.kyc_doc_id] !== 0) {
       checkFile_Change = true;
     }
+
+    let checkFile_Upload = false;
+    if (previewUrls[doc.kyc_doc_id]) {
+      checkFile_Upload = true;
+    }
     const currentIssuedDate = formatDate(issuedDate.startDate);
     const currentExpiredDate = formatDate(expiredDate.startDate);
     const originalIssuedDate = doc.issued_date ? formatDate(new Date(doc.issued_date)) : null;
@@ -423,7 +428,7 @@ const [justSaved, setJustSaved] = useState(false);
     };
     const hasChanges =
       JSON.stringify(currentData) !== JSON.stringify(originalData);
-    const shouldShowUnsaved = hasChanges || checkFile_Change;
+    const shouldShowUnsaved = hasChanges || checkFile_Change || checkFile_Upload;
     setHasUnsavedChanges(shouldShowUnsaved);
 
     return hasChanges;
@@ -454,6 +459,7 @@ const [justSaved, setJustSaved] = useState(false);
     expiredDate.startDate,
     rotationAngles[doc.kyc_doc_id],
     issue_country,
+    previewUrls[doc.kyc_doc_id],
   ]);
 
   useEffect(() => {
