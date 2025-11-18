@@ -224,6 +224,7 @@ const [justSaved, setJustSaved] = useState(false);
       expired_date: formatDate(expiredDate.startDate),
       ict_mapping_id: ictId,
       status: "review",
+      issue_country: issue_country,
     };
     (updated as any)._docIndex = index; // ส่ง index ไปด้วย
     onSaveDocument(updated, rotationAngles[doc.kyc_doc_id] ?? 0);
