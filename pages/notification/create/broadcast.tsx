@@ -70,6 +70,7 @@ const BroadcastContainer: NextPage<Props> = (props) => {
       alert("Please enter a title");
       return;
     }
+
     if (!broadcastMessage.trim()) {
       alert("Please enter a message");
       return;
@@ -94,12 +95,12 @@ const BroadcastContainer: NextPage<Props> = (props) => {
 
     try {
       const payload = {
-        mode: broadcastType,
-        phoneNo: phoneNumbers,
-        subject: Array(phoneNumbers.length).fill(title),
-        description: Array(phoneNumbers.length).fill(broadcastMessage),
-        image: broadcastImages || undefined,
-      };
+  mode: broadcastType,
+  phoneNo: phoneNumbers.length > 0 ? phoneNumbers : undefined,
+  subject: phoneNumbers.length > 0 ? Array(phoneNumbers.length).fill(title) : [title],
+  description: phoneNumbers.length > 0 ? Array(phoneNumbers.length).fill(broadcastMessage) : [broadcastMessage],
+  image: broadcastImages || undefined,
+};
 
       console.log("Sending broadcast notification:", payload);
 
