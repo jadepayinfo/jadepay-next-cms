@@ -59,9 +59,9 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
     const file = e.target.files[0];
 
     // Check file type
-    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif"];
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
     if (!allowedTypes.includes(file.type)) {
-      alert("Please upload only PNG, JPG, or GIF files");
+      alert("Please upload only PNG, JPG files");
       e.target.value = ""; // Reset input
       return;
     }
@@ -326,7 +326,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
               <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG, GIF up to 5MB
+                PNG, JPG up to 5MB
               </p>
               <input
                 type="file"

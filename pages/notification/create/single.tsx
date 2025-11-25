@@ -66,9 +66,9 @@ const SingleContainer: NextPage<Props> = () => {
     const file = e.target.files[0];
 
     // Check file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Please upload only PNG, JPG, or GIF files');
+      alert('Please upload only PNG, JPG files');
       e.target.value = ''; // Reset input
       return;
     }
@@ -278,7 +278,7 @@ const SingleContainer: NextPage<Props> = () => {
             <p className="text-gray-600 font-medium mb-2">
               Click to upload or drag and drop
             </p>
-            <p className="text-sm text-gray-500">PNG, JPG, GIF up to 5MB</p>
+            <p className="text-sm text-gray-500">PNG, JPG up to 5MB</p>
             <input
               type="file"
               accept="image/*"

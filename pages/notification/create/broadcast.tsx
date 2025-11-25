@@ -27,18 +27,20 @@ const BroadcastContainer: NextPage<Props> = (props) => {
     const file = e.target.files[0];
 
     // Check file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
     if (!allowedTypes.includes(file.type)) {
-      alert('Please upload only PNG, JPG, or GIF files');
-      e.target.value = ''; // Reset input
+      alert("Please upload only PNG, JPG files");
+      e.target.value = ""; // Reset input
       return;
     }
 
     // Check file size (5MB = 10 * 1024 * 1024 bytes)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
-      e.target.value = ''; // Reset input
+      alert(
+        `File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`
+      );
+      e.target.value = ""; // Reset input
       return;
     }
     setIsUploadingImage(true);
@@ -48,7 +50,7 @@ const BroadcastContainer: NextPage<Props> = (props) => {
     } catch (error) {
       console.error("Image upload failed:", error);
       alert("Failed to upload image. Please try again.");
-    }finally {
+    } finally {
       setIsUploadingImage(false);
     }
   };
@@ -86,21 +88,34 @@ const BroadcastContainer: NextPage<Props> = (props) => {
       }
     }
 
-    const confirmed = confirm(
-      `Are you sure you want to send notification to ${phoneNumbers.length} recipient(s)?`
-    );
-    if (!confirmed) return;
+    if (broadcastType === "manual") {
+      const confirmed = confirm(
+        `Are you sure you want to send notification to ${phoneNumbers.length} recipient(s)?`
+      );
+      if (!confirmed) return;
+    } else {
+      const confirmed = confirm(
+        `Are you sure you want to send notification to all recipient(s)?`
+      );
+      if (!confirmed) return;
+    }
 
     setIsSending(true);
 
     try {
       const payload = {
-  mode: broadcastType,
-  phoneNo: phoneNumbers.length > 0 ? phoneNumbers : undefined,
-  subject: phoneNumbers.length > 0 ? Array(phoneNumbers.length).fill(title) : [title],
-  description: phoneNumbers.length > 0 ? Array(phoneNumbers.length).fill(broadcastMessage) : [broadcastMessage],
-  image: broadcastImages || undefined,
-};
+        mode: broadcastType,
+        phoneNo: phoneNumbers.length > 0 ? phoneNumbers : undefined,
+        subject:
+          phoneNumbers.length > 0
+            ? Array(phoneNumbers.length).fill(title)
+            : [title],
+        description:
+          phoneNumbers.length > 0
+            ? Array(phoneNumbers.length).fill(broadcastMessage)
+            : [broadcastMessage],
+        image: broadcastImages || undefined,
+      };
 
       console.log("Sending broadcast notification:", payload);
 
@@ -112,9 +127,13 @@ const BroadcastContainer: NextPage<Props> = (props) => {
       console.log("Response:", response.data);
 
       if (response.data.success) {
-        alert(
-          `Broadcast notification sent successfully to ${phoneNumbers.length} recipient(s)!`
-        );
+        if (broadcastType === "manual") {
+          alert(
+            `Broadcast notification sent successfully to ${phoneNumbers.length} recipient(s)!`
+          );
+        } else {
+          alert(`Broadcast notification sent successfully !`);
+        }
         setTitle("");
         setBroadcastMessage("");
         setBroadcastImages("");
@@ -224,21 +243,21 @@ const BroadcastContainer: NextPage<Props> = (props) => {
           </h3>
 
           {isUploadingImage ? (
-          <div className="border-2 border-dashed border-blue-300 rounded-lg p-12 flex flex-col items-center justify-center bg-blue-50">
-            <div className="text-6xl mb-4 animate-pulse" aria-hidden="true">
-              ⏳
+            <div className="border-2 border-dashed border-blue-300 rounded-lg p-12 flex flex-col items-center justify-center bg-blue-50">
+              <div className="text-6xl mb-4 animate-pulse" aria-hidden="true">
+                ⏳
+              </div>
+              <p className="text-blue-600 font-medium mb-2">
+                Uploading image...
+              </p>
+              <p className="text-sm text-gray-500">Please wait</p>
             </div>
-            <p className="text-blue-600 font-medium mb-2">
-              Uploading image...
-            </p>
-            <p className="text-sm text-gray-500">Please wait</p>
-          </div>
-        ) : !broadcastImages ? (
+          ) : !broadcastImages ? (
             <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
               <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG, GIF up to 5MB
+                PNG, JPG up to 5MB
               </p>
               <input
                 type="file"
