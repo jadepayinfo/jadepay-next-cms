@@ -4,6 +4,7 @@ import { ChangeEvent, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import withAuth from "@/hoc/with_auth";
+import { parse } from "csv-parse/browser/esm/sync";
 
 interface Props {}
 
@@ -23,14 +24,23 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
 
     if (file) {
       setCsvFile(file);
-      // Parse CSV (simplified version)
+      // Parse CSV with proper handling of quotes and commas
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
-        const rows = text.split("\n").filter((row) => row.trim() !== "").map((row) => row.split(","));
-        console.log("Parsed CSV rows:", rows);
-        setCsvData(rows);
-        setCsvPreview(rows);
+        try {
+          const records = parse(text, {
+            skip_empty_lines: true,
+            trim: true,
+            relax_quotes: true,
+          });
+          console.log("Parsed CSV rows:", records);
+          setCsvData(records);
+          setCsvPreview(records);
+        } catch (error) {
+          console.error("CSV parsing error:", error);
+          alert("Failed to parse CSV file. Please check the file format.");
+        }
       };
       reader.readAsText(file);
     }
