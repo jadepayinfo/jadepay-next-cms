@@ -673,7 +673,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                               {item.kyc_status === "Approved by Jadepay" ||
                               item.kyc_status === "Duplicate" ||
                               item.kyc_status === "Waiting for ICT Approval" ||
-                              item.kyc_status === "KYC Completed" ? (
+                              item.kyc_status === "KYC completed" ? (
                                 <ButtonFill
                                   className="px-3 py-2 btn-primary"
                                   title="View Details"
