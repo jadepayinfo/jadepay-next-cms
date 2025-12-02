@@ -1113,7 +1113,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           </div>
           <div className=" rounded-md p-4">
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">User ID :</p>
               </div>
               <div className="p-0.5 ">
@@ -1123,7 +1123,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
             </div>
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">
                   Mobile Number :
                 </p>
@@ -1135,7 +1135,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
             </div>
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">ID Type :</p>
               </div>
               <div className="p-0.5 ">
@@ -1147,12 +1147,32 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
             </div>
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">Nationality :</p>
               </div>
               <div className="p-0.5">
                 <p className="text-gray-900 text-sm mb-1 mr-2">
                   {Nationality?.label}
+                </p>
+              </div>
+            </div>
+            <div className="flex">
+              <div className="p-0.5  w-52">
+                <p className="text-gray-900 text-sm mb-1 mr-2">My Referral Code :</p>
+              </div>
+              <div className="p-0.5">
+                <p className="text-gray-900 text-sm mb-1 mr-2">
+                   {customerInfo?.customer_data?.customer?.my_reference_code ?? ""}
+                </p>
+              </div>
+            </div>
+            <div className="flex">
+              <div className="p-0.5  w-52">
+                <p className="text-gray-900 text-sm mb-1 mr-2">Sign up with a referral code :</p>
+              </div>
+              <div className="p-0.5">
+                <p className="text-gray-900 text-sm mb-1 mr-2">
+                  {customerInfo?.customer_data?.customer?.reference_code ?? ""}
                 </p>
               </div>
             </div>
