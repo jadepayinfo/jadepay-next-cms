@@ -36,6 +36,8 @@ export interface Customer {
   deleted_by: number;
   deleted_at: string | null;
   source: string | null;
+  my_reference_code: string | null;
+  reference_code: string | null;
 }
 
 export interface CustomerInfo {
