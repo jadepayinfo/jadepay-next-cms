@@ -100,7 +100,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     customerInfo?.customer_data?.customer?.marital ?? ""
   );
 
-  console.log("customerInfo :", customerInfo); 
   const [Residential, setResidential] = useState<
     ResidentialOption | undefined | null
   >(
