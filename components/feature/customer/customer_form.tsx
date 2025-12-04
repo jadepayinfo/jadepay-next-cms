@@ -1175,13 +1175,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 </p>
               </div>
               <div className="p-0.5">
-                <a
-                  href={`${window.location.origin}/customer/edit/${customerInfo?.customer_data?.customer?.reference_customer_id}`}
-                  className="text-blue-600 hover:text-blue-800 underline text-sm mb-1 mr-2"
-                >
-                  {customerInfo?.customer_data?.customer?.reference_fullname ??
-                    ""}
-                </a>
+                <p className="text-gray-900 text-sm mb-1 mr-2">
+                  {customerInfo?.customer_data?.customer?.my_reference_code ?? ""}
+                </p>
               </div>
             </div>
             <div className="flex">
@@ -1191,10 +1187,15 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                 </p>
               </div>
               <div className="p-0.5">
-                <p className="text-gray-900 text-sm mb-1 mr-2">
-                  {customerInfo?.customer_data?.customer?.reference_code ?? ""}
-                </p>
+                <a
+                  href={`${window.location.origin}/customer/edit/${customerInfo?.customer_data?.customer?.reference_customer_id}`}
+                  className="text-blue-600 hover:text-blue-800 underline text-sm mb-1 mr-2"
+                >
+                  {customerInfo?.customer_data?.customer?.reference_fullname ??
+                    ""}
+                </a>
               </div>
+              
             </div>
           </div>
           <div className="border border-gray-300 rounded-md bg-gray-100 p-4">
