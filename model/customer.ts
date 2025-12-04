@@ -30,12 +30,16 @@ export interface Customer {
   active: boolean;
   kyc_status: string;
   created_by: number;
-  created_at: string;      
+  created_at: string;
   updated_by: number;
-  updated_at: string;      
+  updated_at: string;
   deleted_by: number;
   deleted_at: string | null;
   source: string | null;
+  my_reference_code: string | null;
+  reference_code: string | null;
+  reference_customer_id: number | null;
+  reference_fullname: string | null;
 }
 
 export interface CustomerInfo {
@@ -67,12 +71,12 @@ export interface CustomerAddress {
 }
 
 export interface CustomerRequest {
-    customer: CustomerDataRequest;
-    customer_address: CustomerAddressRequest[];  
+  customer: CustomerDataRequest;
+  customer_address: CustomerAddressRequest[];
 }
 
 
-export interface CustomerDataRequest  {
+export interface CustomerDataRequest {
   customer_id: number;
   user_id: number;
   full_name: string;
@@ -87,7 +91,7 @@ export interface CustomerDataRequest  {
   occupation: number;
   other_occupation: string;
   income: number;
-  active: boolean;   
+  active: boolean;
   updated_by: number;
 }
 

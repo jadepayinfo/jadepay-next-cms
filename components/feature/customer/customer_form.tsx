@@ -209,17 +209,23 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   // popup open image
   const [popupImageUrl, setPopupImageUrl] = useState<string | null>(null);
   const [currentDocId, setCurrentDocId] = useState<number | null>(null);
-  const [popupKycDocument, setPopupKycDocument] = useState<KycDocument | undefined>(undefined);
- const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
+  const [popupKycDocument, setPopupKycDocument] = useState<
+    KycDocument | undefined
+  >(undefined);
+  const [rotationAngles, setRotationAngles] = useState<Record<number, number>>(
     {}
   );
-  const [savedRotationAngles, setSavedRotationAngles] = useState<Record<number, number>>({});
+  const [savedRotationAngles, setSavedRotationAngles] = useState<
+    Record<number, number>
+  >({});
 
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
   const [previewFiles, setPreviewFiles] = useState<Record<number, File>>({});
-  const [imageTimestamps, setImageTimestamps] = useState<Record<number, number>>({});
+  const [imageTimestamps, setImageTimestamps] = useState<
+    Record<number, number>
+  >({});
   const openPopup = async (doc: KycDocument) => {
     setIsImageLoading(true);
     try {
@@ -229,14 +235,16 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       } else if (doc.kyc_doc_id <= 0) {
         url = null;
       } else {
-        const resp = await fetch(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`);
+        const resp = await fetch(
+          `/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`
+        );
         if (!resp.ok) throw new Error("Cannot fetch image");
         const blob = await resp.blob();
         url = URL.createObjectURL(blob);
       }
 
       setPopupImageUrl(url);
-      setPopupKycDocument(doc)
+      setPopupKycDocument(doc);
       setCurrentDocId(doc.kyc_doc_id);
       setIsPopupOpen(true);
     } catch (err) {
@@ -255,7 +263,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     setIsPopupOpen(false);
   };
 
-    // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
+  // บันทึกมุมการหมุนจาก popup (ยังไม่อัปโหลดไฟล์)
   const saveRotation = async (rotation: number) => {
     if (currentDocId === null) return;
     // rotation ที่ได้มาคือมุมสะสมจาก popup แล้ว (เริ่มจาก savedRotationAngles)
@@ -323,16 +331,17 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           }
         );
         let blob = resp.data;
-        blob = newRotationOnly === 0 ? blob : await rotateImage(blob, newRotationOnly);
+        blob =
+          newRotationOnly === 0
+            ? blob
+            : await rotateImage(blob, newRotationOnly);
 
         // Resize รูปภาพก่อน upload
         blob = await resizeImage(blob);
 
-        fileToUpload = new File(
-          [blob],
-          `document_${doc.kyc_doc_id}.jpg`,
-          { type: "image/jpeg" }
-        );
+        fileToUpload = new File([blob], `document_${doc.kyc_doc_id}.jpg`, {
+          type: "image/jpeg",
+        });
         // สร้าง preview URL สำหรับ optimistic update
         optimisticPreviewUrl = URL.createObjectURL(blob);
       }
@@ -630,7 +639,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   // เพิ่ม handlers ใหม่ใน CustomerForm component
   // 1. Handler สำหรับ Approve
   const handleApproveDocument = async (req: KycDocument) => {
-     setIsDocumentActionLoading(true);
+    setIsDocumentActionLoading(true);
     try {
       const response = await axios.post("/api/kyc/set-action-document", {
         kyc_doc_id: req.kyc_doc_id,
@@ -663,8 +672,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       } else {
         alert("อนุมัติเอกสารไม่สำเร็จ");
       }
-    }
-    finally {
+    } finally {
       setIsDocumentActionLoading(false);
     }
   };
@@ -895,16 +903,20 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       };
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
-      
-      const allApproved = documents.every((doc) => doc.status === "approved"||doc.status === "reject");
-      if (!allApproved) {       
+
+      const allApproved = documents.every(
+        (doc) => doc.status === "approved" || doc.status === "reject"
+      );
+      if (!allApproved) {
         //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
         alert("เอกสารยังอนุมัติไม่เรียบร้อย");
         setLoading(false);
         return;
       }
-      const approvedCount = documents.filter((doc) => doc.status != "approved"&& doc.status != "reject").length;
-      if( approvedCount >0){
+      const approvedCount = documents.filter(
+        (doc) => doc.status != "approved" && doc.status != "reject"
+      ).length;
+      if (approvedCount > 0) {
         alert("ไม่มีเอกสารที่อนุมัติ");
         setLoading(false);
         return;
@@ -1093,7 +1105,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               ) : selfeIMG && selfeIMG?.kyc_doc_id > 0 ? (
                 // กรณีมี selfie ใน database แล้ว
                 <img
-                  src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG?.kyc_doc_id}${imageTimestamps[selfeIMG.kyc_doc_id] ? `&t=${imageTimestamps[selfeIMG.kyc_doc_id]}` : ''}`}
+                  src={`/api/kyc/get-document?kyc-doc-id=${selfeIMG?.kyc_doc_id}${imageTimestamps[selfeIMG.kyc_doc_id] ? `&t=${imageTimestamps[selfeIMG.kyc_doc_id]}` : ""}`}
                   alt="selfie"
                   className="w-32 h-32 object-contain cursor-pointer transition-transform mx-auto"
                   style={{
@@ -1113,7 +1125,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           </div>
           <div className=" rounded-md p-4">
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">User ID :</p>
               </div>
               <div className="p-0.5 ">
@@ -1123,7 +1135,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
             </div>
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">
                   Mobile Number :
                 </p>
@@ -1135,7 +1147,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
             </div>
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">ID Type :</p>
               </div>
               <div className="p-0.5 ">
@@ -1147,7 +1159,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
             </div>
             <div className="flex">
-              <div className="p-0.5  w-48">
+              <div className="p-0.5  w-52">
                 <p className="text-gray-900 text-sm mb-1 mr-2">Nationality :</p>
               </div>
               <div className="p-0.5">
@@ -1155,6 +1167,35 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                   {Nationality?.label}
                 </p>
               </div>
+            </div>
+            <div className="flex">
+              <div className="p-0.5 w-52">
+                <p className="text-gray-900 text-sm mb-1 mr-2">
+                  My Referral Code:
+                </p>
+              </div>
+               <div className="p-0.5">
+                <p className="text-gray-900 text-sm mb-1 mr-2">
+                  {customerInfo?.customer_data?.customer?.my_reference_code ?? ""}
+                </p>
+              </div>
+            </div>
+            <div className="flex">
+              <div className="p-0.5  w-52">
+                <p className="text-gray-900 text-sm mb-1 mr-2">
+                  Sign up with a referral code :
+                </p>
+              </div>
+              <div className="p-0.5">
+                <a
+                  href={`${window.location.origin}/customer/edit/${customerInfo?.customer_data?.customer?.reference_customer_id}`}
+                  className="text-blue-600 hover:text-blue-800 underline text-sm mb-1 mr-2"
+                >
+                  {customerInfo?.customer_data?.customer?.reference_fullname ??
+                    ""}
+                </a>
+              </div>
+             
             </div>
           </div>
           <div className="border border-gray-300 rounded-md bg-gray-100 p-4">
@@ -1667,7 +1708,6 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           )}
         </div>
       </div>
-      
 
       {isPopupOpen && (
         <ImagePopup
@@ -1677,7 +1717,9 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           onUpload={handleUploadFromPopup}
           isLoading={isImageLoading}
           document={popupKycDocument}
-          initialRotation={currentDocId !== null ? (savedRotationAngles[currentDocId] ?? 0) : 0}
+          initialRotation={
+            currentDocId !== null ? (savedRotationAngles[currentDocId] ?? 0) : 0
+          }
         />
       )}
 
