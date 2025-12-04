@@ -63,7 +63,6 @@ const CustomerPage: NextPage<Props> = (props) => {
   const refPage = useRef(1);
   const [data, setData] = useState<Customer[]>([]);
 
-  
   // check bok
   const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
   const handleCheckboxChange = (customerId: number, isChecked: boolean) => {
@@ -100,10 +99,10 @@ const CustomerPage: NextPage<Props> = (props) => {
       const endDate = dayjs(dateRange.endDate).endOf("day").unix();
       params += `&registered_at_start=${startDate}&registered_at_end=${endDate}`;
     }
-    if (source !="" &&source!= "All") {      
+    if (source != "" && source != "All") {
       params += `&source=${source}`;
     }
-    if (status !="" &&status!= "All") {      
+    if (status != "" && status != "All") {
       params += `&status=${status}`;
     }
 
@@ -551,10 +550,14 @@ const CustomerPage: NextPage<Props> = (props) => {
                   <option value="Pending">Pending</option>
                   <option value="wait for review">Waiting for review</option>
                   <option value="Operation save">Operation save</option>
-                  <option value="Approved by Jadepay">Approved by Jadepay</option>
+                  <option value="Approved by Jadepay">
+                    Approved by Jadepay
+                  </option>
                   <option value="Processing">Processing</option>
                   <option value="Re-Processing">Re-Processing</option>
-                  <option value="Waiting for ICT Approval">Waiting for ICT Approval</option>
+                  <option value="Waiting for ICT Approval">
+                    Waiting for ICT Approval
+                  </option>
                   <option value="KYC completed">KYC completed</option>
                   <option value="Duplicate">Duplicate</option>
                 </select>
@@ -652,18 +655,30 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.kyc_status === "wait for review" ? "bg-yellow-100 text-gray-700":
-                              item.kyc_status === "Operation save" ? "bg-green-100 text-gray-800":
-                              item.kyc_status === "Approved by Jadepay" ? " bg-green-800 text-white":
-                              item.kyc_status === "Processing" ? "bg-blue-100 text-gray-800":
-                              item.kyc_status === "Waiting for ICT Approval" ? "bg-blue-200 text-gray-800":
-                              item.kyc_status === "KYC completed" ? "bg-blue-900 text-white":
-                              item.kyc_status === "Re-Processing" ? "bg-red-900 text-white":
-                              item.kyc_status === "Reject" || item.kyc_status === "Duplicate"  ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-700"
+                              item.kyc_status === "wait for review"
+                                ? "bg-yellow-100 text-gray-700"
+                                : item.kyc_status === "Operation save"
+                                  ? "bg-green-100 text-gray-800"
+                                  : item.kyc_status === "Approved by Jadepay"
+                                    ? " bg-green-800 text-white"
+                                    : item.kyc_status === "Processing"
+                                      ? "bg-blue-100 text-gray-800"
+                                      : item.kyc_status ===
+                                          "Waiting for ICT Approval"
+                                        ? "bg-blue-200 text-gray-800"
+                                        : item.kyc_status === "KYC completed"
+                                          ? "bg-blue-900 text-white"
+                                          : item.kyc_status === "Re-Processing"
+                                            ? "bg-red-900 text-white"
+                                            : item.kyc_status === "Reject" ||
+                                                item.kyc_status === "Duplicate"
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-gray-100 text-gray-700"
                             }`}
                           >
-                            {item.kyc_status === "wait for review" ? "Waiting for review" : item.kyc_status}
+                            {item.kyc_status === "wait for review"
+                              ? "Waiting for review"
+                              : item.kyc_status}
                           </span>
                         </td>
                         <td>{item.source}</td>
@@ -778,7 +793,6 @@ const CustomerPage: NextPage<Props> = (props) => {
                       7. KYC completed
                     </span>
                   </div>
-
                 </div>
 
                 {/* Action Button */}
