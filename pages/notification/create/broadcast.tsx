@@ -1,13 +1,23 @@
 import { NextPage } from "next";
 import InputCustom from "@/components/input/input";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { uploadImage } from "@/lib/upload_image";
 import TextareaCustom from "@/components/input/textarea";
 import axios from "axios";
 import { useRouter } from "next/router";
 import withAuth from "@/hoc/with_auth";
+import { MasConfigItem } from "@/model/mas_config";
+import {
+  PayloadBroadCastNotification,
+  PayloadTopicNotification,
+} from "@/model/notification";
 
 interface Props {}
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
 const BroadcastContainer: NextPage<Props> = (props) => {
   const router = useRouter();
@@ -18,6 +28,15 @@ const BroadcastContainer: NextPage<Props> = (props) => {
   const [broadcastImages, setBroadcastImages] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // DDL Lang
+  const [langList, setLangList] = useState<SelectOption[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<string | null>(null);
+
+  // DDL Topic
+  const [topicList, setTopicList] = useState<SelectOption[]>([]);
+  const [selectTopic, setselectTopic] = useState<string | null>(null);
 
   const handleBroadcastImageUpload = async (
     e: ChangeEvent<HTMLInputElement>
@@ -68,6 +87,11 @@ const BroadcastContainer: NextPage<Props> = (props) => {
 
   const handleCreate = async () => {
     // Validation
+    if (!selectedLang) {
+      alert("Please select a language");
+      return;
+    }
+
     if (!title.trim()) {
       alert("Please enter a title");
       return;
@@ -103,30 +127,46 @@ const BroadcastContainer: NextPage<Props> = (props) => {
     setIsSending(true);
 
     try {
-      const payload = {
-        mode: broadcastType,
-        phoneNo: phoneNumbers.length > 0 ? phoneNumbers : undefined,
-        subject:
-          phoneNumbers.length > 0
-            ? Array(phoneNumbers.length).fill(title)
-            : [title],
-        description:
-          phoneNumbers.length > 0
-            ? Array(phoneNumbers.length).fill(broadcastMessage)
-            : [broadcastMessage],
-        image: broadcastImages || undefined,
-      };
+      let response = null;
+      if (broadcastType === "manual") {
+        phoneNumbers = parsePhoneNumbers(manualPhones);
+        const payload: PayloadTopicNotification = {
+          specific_users: phoneNumbers,
+          image_url: broadcastImages || null,
+          default_language: selectedLang,
+          detail: {
+            [selectedLang]: {
+              subject: title,
+              description: broadcastMessage,
+            },
+          },
+        };
+        response = await axios.post(
+          "/api/notification/multi-cast-notification",
+          payload
+        );
+      } else {
+        const payload: PayloadBroadCastNotification = {
+          topic: selectTopic,
+          image_url: broadcastImages || null,
+          default_language: selectedLang,
+          detail: {
+            [selectedLang]: {
+              subject: title,
+              description: broadcastMessage,
+            },
+          },
+        };
 
-      console.log("Sending broadcast notification:", payload);
+        response = await axios.post(
+          "/api/notification/broadcast-notification",
+          payload
+        );
+      }
 
-      const response = await axios.post(
-        "/api/notification/send_notification",
-        payload
-      );
+      console.log("Response:", response?.data);
 
-      console.log("Response:", response.data);
-
-      if (response.data.success) {
+      if (response && response.data.success) {
         if (broadcastType === "manual") {
           alert(
             `Broadcast notification sent successfully to ${phoneNumbers.length} recipient(s)!`
@@ -152,6 +192,52 @@ const BroadcastContainer: NextPage<Props> = (props) => {
       setIsSending(false);
     }
   };
+
+  useEffect(() => {
+    const loadLangOptions = async () => {
+      if (optionsLoaded) return;
+      try {
+        const [responseLang, responseTopic] = await Promise.all([
+          await axios.get(`/api/masconfig/get-congig-by-group`, {
+            params: {
+              config_group: "notification_lang",
+            },
+          }),
+          await axios.get(`/api/masconfig/get-congig-by-group`, {
+            params: {
+              config_group: "notification_taget",
+            },
+          }),
+        ]);
+
+        const LangOption: SelectOption[] = (
+          Object.values(responseLang.data) as MasConfigItem[]
+        )
+          .filter((item) => item.config_values && item.config_name) // Filter out empty values
+          .map((item) => ({
+            value: item.config_values,
+            label: item.config_name,
+          }));
+
+        const TopicOption: SelectOption[] = (
+          Object.values(responseTopic.data) as MasConfigItem[]
+        )
+          .filter((item) => item.config_values && item.config_name) // Filter out empty values
+          .map((item) => ({
+            value: item.config_values,
+            label: item.config_name,
+          }));
+
+        setLangList(LangOption);
+        setTopicList(TopicOption);
+        setOptionsLoaded(true);
+      } catch (error) {
+        console.error("Failed to load global options:", error);
+      }
+    };
+
+    loadLangOptions();
+  }, [optionsLoaded]);
 
   return (
     <>
@@ -256,9 +342,7 @@ const BroadcastContainer: NextPage<Props> = (props) => {
             <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
-              <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG up to 5MB
-              </p>
+              <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 5MB</p>
               <input
                 type="file"
                 accept="image/*"
@@ -286,6 +370,62 @@ const BroadcastContainer: NextPage<Props> = (props) => {
             </div>
           )}
         </section>
+
+          {/* Topic Selection */}
+        <div>
+          <label
+            htmlFor="notification-language"
+            className="block text-sm font-semibold text-gray-900 mb-2"
+          >
+            Customer Group <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="notification-language"
+            value={selectTopic || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              setselectTopic(value || null);
+            }}
+            className="w-full px-4 py-3 border-solid border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+            style={{ border: "1px solid #d1d5db" }}
+            required
+          >
+            <option value="">Select customer group</option>
+            {topicList.map((topic, index) => (
+              <option key={`${topic.value}-${index}`} value={topic.value}>
+                {topic.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Language Selection */}
+        <div>
+          <label
+            htmlFor="notification-language"
+            className="block text-sm font-semibold text-gray-900 mb-2"
+          >
+            Language <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="notification-language"
+            value={selectedLang || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedLang(value || null);
+            }}
+            className="w-full px-4 py-3 border-solid border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+            style={{ border: "1px solid #d1d5db" }}
+            required
+          >
+            <option value="">Select Language</option>
+            {langList.map((lang, index) => (
+              <option key={`${lang.value}-${index}`} value={lang.value}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Title */}
         <div>
