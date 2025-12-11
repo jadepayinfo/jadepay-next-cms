@@ -10,11 +10,11 @@ export default async function handler(
     //const payload = { phoneNo, subject, description, image   }
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
-    const response = await Backend.post(`/api/v1/gateway/sendNotification`, req.body, {headers});
+    const response = await Backend.post(`/api/v1/gateway/notification/broadcast`, req.body, {headers});
     res.json({ success: true, ...response.data.data  })
 
   } catch (error: any) {
-    console.log('/api/v1/gateway/sendNotification', error)
+    console.log('/api/v1/gateway/notification/broadcast', error)
     res
       .status(500)
       .send({

@@ -1,12 +1,19 @@
 import { uploadImage } from "@/lib/upload_image";
 import { NextPage } from "next";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import withAuth from "@/hoc/with_auth";
 import { parse } from "csv-parse/browser/esm/sync";
+import { MasConfigItem } from "@/model/mas_config";
+import { PayloadBroadCastNotification, PayloadBulkTopicNotification, PayloadTopicNotification } from "@/model/notification";
 
 interface Props {}
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
 const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
   const router = useRouter();
@@ -18,6 +25,12 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
   const [broadcastImages, setBroadcastImages] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // DDL Lang
+  const [langList, setLangList] = useState<SelectOption[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<string | null>(null);
+
   // CSV functions
   const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -109,6 +122,11 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
       return;
     }
 
+    if (!selectedLang) {
+      alert("Please select a language");
+      return;
+    }
+
     // Parse CSV data (skip header row)
     const customers = csvData
       .slice(1)
@@ -127,30 +145,27 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
     setIsSending(true);
 
     try {
-      // Prepare arrays for batch sending
-      const phoneNumbers: string[] = [];
-      const subjects: string[] = [];
-      const descriptions: string[] = [];
+      // Transform CSV data to new JSON format
+      const items: PayloadTopicNotification[] = customers.map(([phone, title, message]) => ({
+        specific_users: [phone.trim()],
+        image_url: broadcastImages || null,
+        default_language: selectedLang,
+        detail: {
+          [selectedLang]: {
+            subject: title.trim(),
+            description: message.trim(),
+          },
+        },
+      }));
 
-      customers.forEach(([phone, title, message]) => {
-        phoneNumbers.push(phone.trim());
-        subjects.push(title.trim());
-        descriptions.push(message.trim());
-      });
-
-      // Send all notifications in one API call
-      const payload = {
-        mode: "file",
-        phoneNo: phoneNumbers,
-        subject: subjects,
-        description: descriptions,
-        image: broadcastImages || undefined,
+      const payload: PayloadBulkTopicNotification = {
+        items,
       };
 
       console.log("Sending batch notification from CSV:", payload);
 
       const response = await axios.post(
-        "/api/notification/send_notification",
+        "/api/notification/bulk-multicast-notification",
         payload
       );
 
@@ -167,6 +182,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
         setCsvData([]);
         setCsvPreview([]);
         setBroadcastImages("");
+        setSelectedLang(null);
       } else {
         alert("Failed to send notifications");
       }
@@ -180,6 +196,35 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
       setIsSending(false);
     }
   };
+
+  useEffect(() => {
+    const loadLangOptions = async () => {
+      if (optionsLoaded) return;
+      try {
+        const response = await axios.get(`/api/masconfig/get-congig-by-group`, {
+          params: {
+            config_group: "notification_lang",
+          },
+        });
+
+        const LangOption: SelectOption[] = (
+          Object.values(response.data) as MasConfigItem[]
+        )
+          .filter((item) => item.config_values && item.config_name) // Filter out empty values
+          .map((item) => ({
+            value: item.config_values,
+            label: item.config_name,
+          }));
+
+        setLangList(LangOption);
+        setOptionsLoaded(true);
+      } catch (error) {
+        console.error("Failed to load global options:", error);
+      }
+    };
+
+    loadLangOptions();
+  }, [optionsLoaded]);
 
   return (
     <>
@@ -335,9 +380,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
             <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
-              <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG up to 5MB
-              </p>
+              <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 5MB</p>
               <input
                 type="file"
                 accept="image/*"
@@ -366,6 +409,33 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
           )}
         </section>
 
+        <div>
+          <label
+            htmlFor="notification-language"
+            className="block text-sm font-semibold text-gray-900 mb-2"
+          >
+            Customer target <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="notification-language"
+            value={selectedLang || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedLang(value || null);
+            }}
+            className="w-full px-4 py-3 border-solid border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+            style={{ border: "1px solid #d1d5db" }}
+            required
+          >
+            <option value="">Select Language</option>
+            {langList.map((lang, index) => (
+              <option key={`${lang.value}-${index}`} value={lang.value}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        
         {/* Info */}
         {csvFile && (
           <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-4">

@@ -6,19 +6,15 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-
-    const params = {
-      ...req.query,
-      page: req.query?.page ?? 1,
-      limit: req.query?.limit ?? 10,
-    }
+   //const { phoneNo, subject, description, image } = req.body;
+    //const payload = { phoneNo, subject, description, image   }
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
-    const response = await Backend.get(`/api/v1/gateway/notification/get-list-notification`, { headers , params });   
-    res.json({ success: true, ...response.data.data })
-
+    const response = await Backend.post(`/api/v1/gateway/notification/bulk-multicast`, req.body, {headers});
+    res.json({ success: true, ...response.data.data  })
 
   } catch (error: any) {
+    console.log('/api/v1/gateway/bulk-multicast', error)
     res
       .status(500)
       .send({
