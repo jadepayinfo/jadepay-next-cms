@@ -19,19 +19,19 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: [
-      "place-hold.it",
-      "media.fiittoken.io",
-      "s3-dev.speedkub.io",
-      "s3.speedkub.io",
-      "test902.s3.amazonaws.com",
-      "picsum.photos",
-      "images.unsplash.com",
-      "media.dev.fiittoken.io",
+    remotePatterns: [
+      { protocol: 'https', hostname: 'place-hold.it' },
+      { protocol: 'https', hostname: 'media.fiittoken.io' },
+      { protocol: 'https', hostname: 's3-dev.speedkub.io' },
+      { protocol: 'https', hostname: 's3.speedkub.io' },
+      { protocol: 'https', hostname: 'test902.s3.amazonaws.com' },
+      { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'media.dev.fiittoken.io' },
     ],
   },
-  publicRuntimeConfig: {
-    appVersion: pagekageJson.version || '',
+  env: {
+    APP_VERSION: pagekageJson.version || '',
   },
 }
 
