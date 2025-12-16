@@ -278,47 +278,6 @@ const BroadcastContainer: NextPage<Props> = (props) => {
                 </p>
               </div>
             </label>
-
-            {/* Option 2: Manual Entry */}
-            <label
-              className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                broadcastType === "manual"
-                  ? "bg-green-50 border-green-500"
-                  : "bg-white border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <input
-                type="radio"
-                name="broadcastType"
-                value="manual"
-                checked={broadcastType === "manual"}
-                onChange={(e) => setBroadcastType(e.target.value)}
-                className="w-5 h-5 text-green-500 mt-0.5 focus:ring-2 focus:ring-green-500"
-              />
-              <div className="ml-4 flex-1">
-                <p className="font-semibold text-gray-900">
-                  Enter Phone Numbers Manually
-                </p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Enter specific phone numbers to send to
-                </p>
-
-                {broadcastType === "manual" && (
-                  <div className="mt-3">
-                    <TextareaCustom
-                      value={manualPhones}
-                      onChange={(e) => setManualPhones(e.target.value)}
-                      placeholder="Enter phone numbers (one per line or comma separated)&#10;Example:&#10;66812345678&#10;66823456789&#10;66834567890"
-                      className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none outline-none text-sm"
-                      title={""}
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      💡 Separate numbers with comma or new line
-                    </p>
-                  </div>
-                )}
-              </div>
-            </label>
           </div>
         </section>
 

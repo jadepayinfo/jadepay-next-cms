@@ -22,9 +22,7 @@ const SingleContainer: NextPage<Props> = () => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [attachedImage, setAttachedImage] = useState<string>("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
-  );
+  const [selectedCustomers, setSelectedCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -65,9 +63,28 @@ const SingleContainer: NextPage<Props> = () => {
   };
 
   const selectCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer);
+    // Check if customer is already selected
+    const isAlreadySelected = selectedCustomers.some(
+      (c) => c.customer_id === customer.customer_id
+    );
+
+    if (isAlreadySelected) {
+      alert("This customer is already selected");
+      return;
+    }
+
+    // Add customer to selected list
+    setSelectedCustomers([...selectedCustomers, customer]);
+
+    // Clear search results and query to allow new search
     setSearchResults([]);
     setSearchQuery("");
+  };
+
+  const removeCustomer = (customerId: number) => {
+    setSelectedCustomers(
+      selectedCustomers.filter((c) => c.customer_id !== customerId)
+    );
   };
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -111,8 +128,8 @@ const SingleContainer: NextPage<Props> = () => {
 
   const handleCreate = async () => {
     // Validation
-    if (!selectedCustomer) {
-      alert("Please select a customer");
+    if (selectedCustomers.length === 0) {
+      alert("Please select at least one customer");
       return;
     }
     if (!selectedLang) {
@@ -131,9 +148,9 @@ const SingleContainer: NextPage<Props> = () => {
     setIsSending(true);
 
     try {
-      // Prepare payload
+      // Prepare payload with multiple customers
       const payload: PayloadTopicNotification = {
-        specific_users: [selectedCustomer.mobile_no],
+        specific_users: selectedCustomers.map((c) => c.mobile_no),
         image_url: attachedImage || null,
         default_language: selectedLang,
         detail: {
@@ -157,7 +174,7 @@ const SingleContainer: NextPage<Props> = () => {
         setTitle("");
         setMessage("");
         setAttachedImage("");
-        setSelectedCustomer(null);
+        setSelectedCustomers([]);
         setSelectedLang(null);
         // Optionally redirect to list page
         // router.push("/notification");
@@ -277,31 +294,45 @@ const SingleContainer: NextPage<Props> = () => {
           </div>
         )}
 
-        {/* Selected Customer */}
-        {selectedCustomer && (
-          <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                {selectedCustomer.fullname
-                  ? selectedCustomer.fullname
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                  : "?"}
+        {/* Selected Customers */}
+        {selectedCustomers.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-700 mb-2">
+              Selected {selectedCustomers.length} customer(s):
+            </p>
+            {selectedCustomers.map((customer) => (
+              <div
+                key={customer.customer_id}
+                className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 flex items-center justify-between"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    {customer.fullname
+                      ? customer.fullname
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : "?"}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {customer.fullname || "Unknown"}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      📞 {customer.mobile_no}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeCustomer(customer.customer_id)}
+                  className="text-red-500 hover:text-red-700 font-bold text-xl px-2"
+                  aria-label="Remove customer"
+                >
+                  ✕
+                </button>
               </div>
-              <div>
-                <p className="font-semibold text-gray-900">
-                  {selectedCustomer.fullname || "Unknown"}
-                </p>
-                <p className="text-sm text-gray-600">
-                  📞 {selectedCustomer.mobile_no}
-                </p>
-              </div>
-            </div>
-            <div className="text-3xl text-green-500" aria-label="Selected">
-              ✓
-            </div>
+            ))}
           </div>
         )}
       </section>
@@ -449,13 +480,13 @@ const SingleContainer: NextPage<Props> = () => {
       </div>
 
       {/* Info Box */}
-      {selectedCustomer && (
+      {selectedCustomers.length > 0 && (
         <div
           className="bg-blue-50 border border-blue-400 rounded-lg p-4"
           role="status"
         >
           <p className="text-sm text-blue-900">
-            💡 Message will be sent to {selectedCustomer.mobile_no}
+            💡 Message will be sent to {selectedCustomers.length} customer(s)
             {attachedImage && " with 1 image"}
           </p>
         </div>
@@ -473,7 +504,7 @@ const SingleContainer: NextPage<Props> = () => {
         <button
           type="button"
           onClick={handleCreate}
-          disabled={!title || !message || !selectedCustomer || !selectedLang || isSending}
+          disabled={!title || !message || selectedCustomers.length === 0 || !selectedLang || isSending}
           className="px-8 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSending ? "Sending..." : "Create"}
