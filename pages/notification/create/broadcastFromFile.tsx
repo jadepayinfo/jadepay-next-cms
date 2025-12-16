@@ -26,11 +26,6 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
   const [isSending, setIsSending] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // DDL Lang
-  const [langList, setLangList] = useState<SelectOption[]>([]);
-  const [optionsLoaded, setOptionsLoaded] = useState(false);
-  const [selectedLang, setSelectedLang] = useState<string | null>(null);
-
   // CSV functions
   const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,7 +60,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
     setCsvPreview([]);
   };
   const downloadTemplate = () => {
-    const template = "phone,title,message\n6690xxxxxxx,Hello,Hello customer";
+    const template = "phone,title,message,language\n6690xxxxxxx,Hello,Hello customer,en";
     const blob = new Blob([template], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -122,11 +117,6 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
       return;
     }
 
-    if (!selectedLang) {
-      alert("Please select a language");
-      return;
-    }
-
     // Parse CSV data (skip header row)
     const customers = csvData
       .slice(1)
@@ -145,18 +135,52 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
     setIsSending(true);
 
     try {
-      // Transform CSV data to new JSON format
-      const items: PayloadTopicNotification[] = customers.map(([phone, title, message]) => ({
-        specific_users: [phone.trim()],
-        image_url: broadcastImages || null,
-        default_language: selectedLang,
-        detail: {
-          [selectedLang]: {
-            subject: title.trim(),
-            description: message.trim(),
-          },
-        },
-      }));
+      const items: PayloadTopicNotification[] = [];
+      let currentGroup: string[] = [];
+      let currentTitle = "";
+      let currentMessage = "";
+      let currentLanguage = "";
+
+      customers.forEach(([phone, title, message, language], index) => {
+        // If title or message changes, push current group and start new
+        if (title !== currentTitle || message !== currentMessage) {
+          if (currentGroup.length > 0) {
+            items.push({
+              specific_users: currentGroup,
+              image_url: broadcastImages || null,
+              default_language: language,
+              detail: {
+                [language]: {
+                  subject: currentTitle,
+                  description: currentMessage,
+                },
+              },
+            });
+          }
+          // Start new group
+          currentGroup = [phone];
+          currentTitle = title;
+          currentMessage = message;
+        } else {
+          // Same title and message, add to current group
+          currentGroup.push(phone);
+        }
+
+        // Push last group at the end
+        if (index === customers.length - 1 && currentGroup.length > 0) {
+          items.push({
+            specific_users: currentGroup,
+            image_url: broadcastImages || null,
+            default_language: language,
+            detail: {
+              [language]: {
+                subject: currentTitle,
+                description: currentMessage,
+              },
+            },
+          });
+        }
+      });
 
       const payload: PayloadBulkTopicNotification = {
         items,
@@ -164,28 +188,29 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
 
       console.log("Sending batch notification from CSV:", payload);
 
-      const response = await axios.post(
-        "/api/notification/bulk-multicast-notification",
-        payload
-      );
+      // const response = await axios.post(
+      //   "/api/notification/bulk-multicast-notification",
+      //   payload
+      // );
 
-      console.log("Response:", response.data);
+      // console.log("Response:", response.data);
 
-      if (response.data.success) {
-        alert(
-          `All notifications sent successfully!\n\n` +
-            `✅ Sent to ${customers.length} customer(s)`
-        );
+      // if (response.data.success) {
+      //   alert(
+      //     `All notifications sent successfully!\n\n` +
+      //       `✅ Sent to ${customers.length} customer(s)`
+      //   );
 
-        // Reset form
-        setCsvFile(null);
-        setCsvData([]);
-        setCsvPreview([]);
-        setBroadcastImages("");
-        setSelectedLang(null);
-      } else {
-        alert("Failed to send notifications");
-      }
+      //   // Reset form
+      //   setCsvFile(null);
+      //   setCsvData([]);
+      //   setCsvPreview([]);
+      //   setBroadcastImages("");
+
+      // } else {
+      //   alert("Failed to send notifications");
+      // }
+
     } catch (error: any) {
       console.error("Send broadcast from file failed:", error);
       alert(
@@ -196,35 +221,6 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
       setIsSending(false);
     }
   };
-
-  useEffect(() => {
-    const loadLangOptions = async () => {
-      if (optionsLoaded) return;
-      try {
-        const response = await axios.get(`/api/masconfig/get-congig-by-group`, {
-          params: {
-            config_group: "notification_lang",
-          },
-        });
-
-        const LangOption: SelectOption[] = (
-          Object.values(response.data) as MasConfigItem[]
-        )
-          .filter((item) => item.config_values && item.config_name) // Filter out empty values
-          .map((item) => ({
-            value: item.config_values,
-            label: item.config_name,
-          }));
-
-        setLangList(LangOption);
-        setOptionsLoaded(true);
-      } catch (error) {
-        console.error("Failed to load global options:", error);
-      }
-    };
-
-    loadLangOptions();
-  }, [optionsLoaded]);
 
   return (
     <>
@@ -408,33 +404,6 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
             </div>
           )}
         </section>
-
-        <div>
-          <label
-            htmlFor="notification-language"
-            className="block text-sm font-semibold text-gray-900 mb-2"
-          >
-            Customer target <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="notification-language"
-            value={selectedLang || ""}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSelectedLang(value || null);
-            }}
-            className="w-full px-4 py-3 border-solid border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
-            style={{ border: "1px solid #d1d5db" }}
-            required
-          >
-            <option value="">Select Language</option>
-            {langList.map((lang, index) => (
-              <option key={`${lang.value}-${index}`} value={lang.value}>
-                {lang.label}
-              </option>
-            ))}
-          </select>
-        </div>
         
         {/* Info */}
         {csvFile && (
