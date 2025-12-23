@@ -246,9 +246,12 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
               • Column 3: <strong>message</strong> - Message text
             </li>
             <li>
+              • Column 4: <strong>language</strong> - language code (e.g., en,th,mm)
+            </li>
+            <li>
               • First row should be header:{" "}
               <code className="bg-yellow-100 px-2 py-1 rounded">
-                phone,title,message
+                phone,title,message,language
               </code>
             </li>
           </ul>
