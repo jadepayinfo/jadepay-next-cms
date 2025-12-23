@@ -1,6 +1,5 @@
 import { useTheme } from '@/context/theme_context';
 import { IconClose, IconSetting } from '../icon';
-import getConfig from 'next/config';
 
 // TODO: mode svg code to file and use import and refactor code theme
 
@@ -17,7 +16,7 @@ export const ButtonOpenThemeSetting = () => {
 
 const ThemeMenu = () => {
 
-  const { publicRuntimeConfig: {appVersion} } = getConfig();
+  const appVersion = process.env.APP_VERSION || '1.0.0';
 
   const { themeName, isDark, changeMode, changeTheme, themeNameList } =
     useTheme();

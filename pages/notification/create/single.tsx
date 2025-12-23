@@ -3,13 +3,18 @@ import TextareaCustom from "@/components/input/textarea";
 import { uploadImage } from "@/lib/upload_image";
 import { NextPage } from "next";
 import { useRouter } from "next/router";
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useEffect } from "react";
 import axios from "axios";
 import { Customer } from "@/model/customer";
-import ButtonFill from "@/components/buttons/button_fill";
-
+import { PayloadTopicNotification } from "@/model/notification";
+import { MasConfigItem } from "@/model/mas_config";
 
 interface Props {}
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
 const SingleContainer: NextPage<Props> = () => {
   const router = useRouter();
@@ -17,13 +22,17 @@ const SingleContainer: NextPage<Props> = () => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [attachedImage, setAttachedImage] = useState<string>("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomers, setSelectedCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  // DDL Lang
+  const [langList, setLangList] = useState<SelectOption[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<string | null>(null);
   const handleSearchCustomer = async () => {
     if (!searchQuery.trim()) {
       alert("Please enter search query");
@@ -33,12 +42,11 @@ const SingleContainer: NextPage<Props> = () => {
     setIsSearching(true);
     setSearchResults([]);
     try {
-       let params = `page=1&limit=10`;
+      let params = `page=1&limit=10`;
       params += `&mobile_no=${searchQuery}`;
 
-      const response =  await axios.get(`/api/customer/list?${params}`);
+      const response = await axios.get(`/api/customer/list?${params}`);
 
-      console.log("Search response:", response.data);
 
       if (response.data.success && response.data.data) {
         setSearchResults(response.data.data);
@@ -55,9 +63,28 @@ const SingleContainer: NextPage<Props> = () => {
   };
 
   const selectCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer);
+    // Check if customer is already selected
+    const isAlreadySelected = selectedCustomers.some(
+      (c) => c.customer_id === customer.customer_id
+    );
+
+    if (isAlreadySelected) {
+      alert("This customer is already selected");
+      return;
+    }
+
+    // Add customer to selected list
+    setSelectedCustomers([...selectedCustomers, customer]);
+
+    // Clear search results and query to allow new search
     setSearchResults([]);
     setSearchQuery("");
+  };
+
+  const removeCustomer = (customerId: number) => {
+    setSelectedCustomers(
+      selectedCustomers.filter((c) => c.customer_id !== customerId)
+    );
   };
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -66,25 +93,26 @@ const SingleContainer: NextPage<Props> = () => {
     const file = e.target.files[0];
 
     // Check file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
     if (!allowedTypes.includes(file.type)) {
-      alert('Please upload only PNG, JPG files');
-      e.target.value = ''; // Reset input
+      alert("Please upload only PNG, JPG files");
+      e.target.value = ""; // Reset input
       return;
     }
 
     // Check file size (5MB = 10 * 1024 * 1024 bytes)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
-      e.target.value = ''; // Reset input
+      alert(
+        `File size exceeds 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`
+      );
+      e.target.value = ""; // Reset input
       return;
     }
 
     setIsUploadingImage(true);
     try {
       const uploadedUrl = await uploadImage(file);
-      console.log("uploadedUrl:", uploadedUrl);
       setAttachedImage(uploadedUrl);
     } catch (error) {
       console.error("Image upload failed:", error);
@@ -100,8 +128,12 @@ const SingleContainer: NextPage<Props> = () => {
 
   const handleCreate = async () => {
     // Validation
-    if (!selectedCustomer) {
-      alert("Please select a customer");
+    if (selectedCustomers.length === 0) {
+      alert("Please select at least one customer");
+      return;
+    }
+    if (!selectedLang) {
+      alert("Please select a language");
       return;
     }
     if (!title.trim()) {
@@ -116,20 +148,25 @@ const SingleContainer: NextPage<Props> = () => {
     setIsSending(true);
 
     try {
-      // Prepare payload
-      const payload = {
-        mode: "single",
-        phoneNo: [selectedCustomer.mobile_no || ""],
-        subject: [title],
-        description: [message],
-        image: attachedImage || undefined,
+      // Prepare payload with multiple customers
+      const payload: PayloadTopicNotification = {
+        specific_users: selectedCustomers.map((c) => c.mobile_no),
+        image_url: attachedImage || null,
+        default_language: selectedLang,
+        detail: {
+          [selectedLang]: {
+            subject: title,
+            description: message,
+          },
+        },
       };
 
-      console.log("Sending notification:", payload);
+      console.log("Payload to send:",  JSON.stringify(payload));
 
-      const response = await axios.post("/api/notification/send_notification", payload);
-
-      console.log("Response:", response.data);
+      const response = await axios.post(
+        "/api/notification/multi-cast-notification",
+        payload
+      );
 
       if (response.data.success) {
         alert("Notification sent successfully!");
@@ -137,7 +174,8 @@ const SingleContainer: NextPage<Props> = () => {
         setTitle("");
         setMessage("");
         setAttachedImage("");
-        setSelectedCustomer(null);
+        setSelectedCustomers([]);
+        setSelectedLang(null);
         // Optionally redirect to list page
         // router.push("/notification");
       } else {
@@ -145,11 +183,44 @@ const SingleContainer: NextPage<Props> = () => {
       }
     } catch (error: any) {
       console.error("Send notification failed:", error);
-      alert(error.response?.data?.message || "Failed to send notification. Please try again.");
+      alert(
+        error.response?.data?.message ||
+          "Failed to send notification. Please try again."
+      );
     } finally {
       setIsSending(false);
     }
   };
+
+  useEffect(() => {
+    const loadLangOptions = async () => {
+     if (optionsLoaded) return;
+      try {
+        const response = await axios.get(`/api/masconfig/get-congig-by-group`, {
+              params: {
+                config_group: "notification_lang",
+              },
+            });
+
+         const LangOption: SelectOption[] = (
+                  Object.values(response.data) as MasConfigItem[]
+                )
+                .filter((item) => item.config_values && item.config_name) // Filter out empty values
+                .map((item) => ({
+                  value: item.config_values,
+                  label: item.config_name ,
+                }));
+
+        setLangList(LangOption);
+        setOptionsLoaded(true);     
+      } catch (error) {
+        console.error("Failed to load global options:", error);
+      }
+    };
+
+    loadLangOptions();
+  }, [optionsLoaded]);
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -212,7 +283,8 @@ const SingleContainer: NextPage<Props> = () => {
                       {customer.fullname || "Unknown"}
                     </p>
                     <p className="text-sm text-gray-600">
-                      📞 {customer.mobile_no || "N/A"} | Name: {customer.fullname || "N/A"}
+                      📞 {customer.mobile_no || "N/A"} | Name:{" "}
+                      {customer.fullname || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -222,31 +294,45 @@ const SingleContainer: NextPage<Props> = () => {
           </div>
         )}
 
-        {/* Selected Customer */}
-        {selectedCustomer && (
-          <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                {selectedCustomer.fullname
-                  ? selectedCustomer.fullname
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                  : "?"}
+        {/* Selected Customers */}
+        {selectedCustomers.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-700 mb-2">
+              Selected {selectedCustomers.length} customer(s):
+            </p>
+            {selectedCustomers.map((customer) => (
+              <div
+                key={customer.customer_id}
+                className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4 flex items-center justify-between"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    {customer.fullname
+                      ? customer.fullname
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : "?"}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {customer.fullname || "Unknown"}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      📞 {customer.mobile_no}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeCustomer(customer.customer_id)}
+                  className="text-red-500 hover:text-red-700 font-bold text-xl px-2"
+                  aria-label="Remove customer"
+                >
+                  ✕
+                </button>
               </div>
-              <div>
-                <p className="font-semibold text-gray-900">
-                  {selectedCustomer.fullname || "Unknown"}
-                </p>
-                <p className="text-sm text-gray-600">
-                  📞 {selectedCustomer.mobile_no}
-                </p>
-              </div>
-            </div>
-            <div className="text-3xl text-green-500" aria-label="Selected">
-              ✓
-            </div>
+            ))}
           </div>
         )}
       </section>
@@ -265,9 +351,7 @@ const SingleContainer: NextPage<Props> = () => {
             <div className="text-6xl mb-4 animate-pulse" aria-hidden="true">
               ⏳
             </div>
-            <p className="text-blue-600 font-medium mb-2">
-              Uploading image...
-            </p>
+            <p className="text-blue-600 font-medium mb-2">Uploading image...</p>
             <p className="text-sm text-gray-500">Please wait</p>
           </div>
         ) : !attachedImage ? (
@@ -308,6 +392,34 @@ const SingleContainer: NextPage<Props> = () => {
           </div>
         )}
       </section>
+
+      {/* Language Selection */}
+      <div>
+        <label
+          htmlFor="notification-language"
+          className="block text-sm font-semibold text-gray-900 mb-2"
+        >
+          Language <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="notification-language"
+          value={selectedLang || ""}
+          onChange={(e) => {
+            const value = e.target.value;
+            setSelectedLang(value || null);
+          }}
+          className="w-full px-4 py-3 border-solid border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+          style={{ border: "1px solid #d1d5db" }}
+          required
+        >
+          <option value="">Select Language</option>
+          {langList.map((lang, index) => (
+            <option key={`${lang.value}-${index}`} value={lang.value}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Title */}
       <div>
@@ -368,18 +480,18 @@ const SingleContainer: NextPage<Props> = () => {
       </div>
 
       {/* Info Box */}
-      {selectedCustomer && (
+      {selectedCustomers.length > 0 && (
         <div
           className="bg-blue-50 border border-blue-400 rounded-lg p-4"
           role="status"
         >
           <p className="text-sm text-blue-900">
-            💡 Message will be sent to {selectedCustomer.mobile_no}
+            💡 Message will be sent to {selectedCustomers.length} customer(s)
             {attachedImage && " with 1 image"}
           </p>
         </div>
       )}
-            
+
       {/* Action Buttons */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button
@@ -392,7 +504,7 @@ const SingleContainer: NextPage<Props> = () => {
         <button
           type="button"
           onClick={handleCreate}
-          disabled={!title || !message || !selectedCustomer || isSending}
+          disabled={!title || !message || selectedCustomers.length === 0 || !selectedLang || isSending}
           className="px-8 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSending ? "Sending..." : "Create"}

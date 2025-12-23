@@ -47,7 +47,6 @@ const NotificationPage: NextPage<Props> = (props) => {
   };
 
   const handleFilter = async () => {
-     console.log("handleFilter : ")
     let params = `page=${refPage.current}&limit=${limit}`;
 
     if (filterUsername) {
@@ -206,6 +205,8 @@ const NotificationPage: NextPage<Props> = (props) => {
                   <tr className="border-[--border-color]">
                     <th></th>
                     <th>Icon</th>
+                    <th>Notification Type</th>
+                    <th>Send Type</th>
                     <th>Title</th>
                     <th>Message</th>
                     <th>Send To User</th>
@@ -236,9 +237,13 @@ const NotificationPage: NextPage<Props> = (props) => {
                             <span className="text-gray-400">No icon</span>
                           )}
                         </td>
-                        <td>{item.subject || "-"}</td>
+                        <td>{item.topic || "-"}</td>
+                        <td>{item.type || "-"}</td>
+                        <td>
+                          {item.subject || "-"}
+                        </td>
                         <td className="max-w-xs truncate">
-                          {item.description || "-"}
+                           {item.description|| "-"}
                         </td>
                          <td className="max-w-xs truncate">
                           {item.specific_users && item.specific_users.length > 0

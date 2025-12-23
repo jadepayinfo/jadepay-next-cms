@@ -1,12 +1,19 @@
 import { uploadImage } from "@/lib/upload_image";
 import { NextPage } from "next";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import withAuth from "@/hoc/with_auth";
 import { parse } from "csv-parse/browser/esm/sync";
+import { MasConfigItem } from "@/model/mas_config";
+import { PayloadBroadCastNotification, PayloadBulkTopicNotification, PayloadTopicNotification } from "@/model/notification";
 
 interface Props {}
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
 
 const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
   const router = useRouter();
@@ -18,6 +25,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
   const [broadcastImages, setBroadcastImages] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   // CSV functions
   const handleCSVUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,7 +60,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
     setCsvPreview([]);
   };
   const downloadTemplate = () => {
-    const template = "phone,title,message\n6690xxxxxxx,Hello,Hello customer";
+    const template = "phone,title,message,language\n6690xxxxxxx,Hello,Hello customer,en";
     const blob = new Blob([template], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -127,49 +135,82 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
     setIsSending(true);
 
     try {
-      // Prepare arrays for batch sending
-      const phoneNumbers: string[] = [];
-      const subjects: string[] = [];
-      const descriptions: string[] = [];
+      const items: PayloadTopicNotification[] = [];
+      let currentGroup: string[] = [];
+      let currentTitle = "";
+      let currentMessage = "";
+      let currentLanguage = "";
 
-      customers.forEach(([phone, title, message]) => {
-        phoneNumbers.push(phone.trim());
-        subjects.push(title.trim());
-        descriptions.push(message.trim());
+      customers.forEach(([phone, title, message, language], index) => {
+        // If title or message changes, push current group and start new
+        if (title !== currentTitle || message !== currentMessage) {
+          if (currentGroup.length > 0) {
+            items.push({
+              specific_users: currentGroup,
+              image_url: broadcastImages || null,
+              default_language: language,
+              detail: {
+                [language]: {
+                  subject: currentTitle,
+                  description: currentMessage,
+                },
+              },
+            });
+          }
+          // Start new group
+          currentGroup = [phone];
+          currentTitle = title;
+          currentMessage = message;
+        } else {
+          // Same title and message, add to current group
+          currentGroup.push(phone);
+        }
+
+        // Push last group at the end
+        if (index === customers.length - 1 && currentGroup.length > 0) {
+          items.push({
+            specific_users: currentGroup,
+            image_url: broadcastImages || null,
+            default_language: language,
+            detail: {
+              [language]: {
+                subject: currentTitle,
+                description: currentMessage,
+              },
+            },
+          });
+        }
       });
 
-      // Send all notifications in one API call
-      const payload = {
-        mode: "file",
-        phoneNo: phoneNumbers,
-        subject: subjects,
-        description: descriptions,
-        image: broadcastImages || undefined,
+      const payload: PayloadBulkTopicNotification = {
+        items,
       };
 
       console.log("Sending batch notification from CSV:", payload);
 
-      const response = await axios.post(
-        "/api/notification/send_notification",
-        payload
-      );
+      // const response = await axios.post(
+      //   "/api/notification/bulk-multicast-notification",
+      //   payload
+      // );
 
-      console.log("Response:", response.data);
+      // console.log("Response:", response.data);
 
-      if (response.data.success) {
-        alert(
-          `All notifications sent successfully!\n\n` +
-            `✅ Sent to ${customers.length} customer(s)`
-        );
+      // if (response.data.success) {
+      //   alert(
+      //     `All notifications sent successfully!\n\n` +
+      //       `✅ Sent to ${customers.length} customer(s)`
+      //   );
 
-        // Reset form
-        setCsvFile(null);
-        setCsvData([]);
-        setCsvPreview([]);
-        setBroadcastImages("");
-      } else {
-        alert("Failed to send notifications");
-      }
+      //   // Reset form
+      //   setCsvFile(null);
+      //   setCsvData([]);
+      //   setCsvPreview([]);
+      //   setBroadcastImages("");
+
+      // } else {
+      //   alert("Failed to send notifications");
+      // }
+
     } catch (error: any) {
       console.error("Send broadcast from file failed:", error);
       alert(
@@ -205,9 +246,12 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
               • Column 3: <strong>message</strong> - Message text
             </li>
             <li>
+              • Column 4: <strong>language</strong> - language code (e.g., en,th,mm)
+            </li>
+            <li>
               • First row should be header:{" "}
               <code className="bg-yellow-100 px-2 py-1 rounded">
-                phone,title,message
+                phone,title,message,language
               </code>
             </li>
           </ul>
@@ -335,9 +379,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
             <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
               <div className="text-4xl mb-3">🖼️</div>
               <p className="text-gray-600 font-medium">Click to upload image</p>
-              <p className="text-sm text-gray-500 mt-1">
-                PNG, JPG up to 5MB
-              </p>
+              <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 5MB</p>
               <input
                 type="file"
                 accept="image/*"
@@ -365,7 +407,7 @@ const BroadcastFromFIleContainer: NextPage<Props> = (props) => {
             </div>
           )}
         </section>
-
+        
         {/* Info */}
         {csvFile && (
           <div className="bg-yellow-50 border border-yellow-400 rounded-lg p-4">
