@@ -26,6 +26,7 @@ import {
   RefreshCw,
   View,
   UserCheck,
+  FileCheck
 } from "lucide-react";
 
 import AlertSBD from "@/components/share/modal/alert_sbd";
@@ -392,6 +393,21 @@ const CustomerPage: NextPage<Props> = (props) => {
     }
   };
 
+  const handleApproveEDD = async (UserIdId: number, customerName: string) =>{
+    const confirmResult = confirm(
+      `ต้องการแก้ไขข้อมูล approve เอกสาร EDD สำหรับ ${customerName} หรือไม่?`
+    );
+    if (!confirmResult) return;
+    try {
+      const response = await axios.post("/api/kyc/approve-edd", {
+        user_id: UserIdId,
+      });
+
+      handleFilter();
+    } catch (error) {
+      alert("เกิดข้อผิดพลาดในการแก้ไข Approve");
+    }
+  }
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -609,6 +625,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                     <th>Email</th>
                     <th>Register Date</th>
                     <th>Status</th>
+                    <th>EDD Status</th>
                     <th>Source</th>
                     <th>Action</th>
                   </tr>
@@ -629,7 +646,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                           {item.kyc_status === "Processing" ||
                           item.kyc_status === "Waiting for ICT Approval" ||
                           item.kyc_status === "Duplicate" ||
-                          item.kyc_status === "KYC complete" ? (
+                          item.kyc_status === "KYC completed" ? (
                             <div className="w-4 h-4"></div>
                           ) : (
                             <input
@@ -681,6 +698,22 @@ const CustomerPage: NextPage<Props> = (props) => {
                               : item.kyc_status}
                           </span>
                         </td>
+                        <td>
+                           <span
+                            className={`px-2 py-1 text-xs rounded-full font-medium ${
+                              item.edd_status === "Approved"
+                                ?  "bg-blue-900 text-white"
+                                : item.edd_status === "Processing"
+                                ? " bg-yellow-100 text-gray-700"
+                                : item.edd_status === "Processing"  ? " bg-gray-100 text-gray-700"
+                                : ""
+                            }`}
+                          >
+                            {item.edd_status != ""
+                              ? item.edd_status
+                              : ""}
+                          </span>
+                        </td>
                         <td>{item.source}</td>
                         <td>
                           <div className="flex gap-2">
@@ -715,9 +748,25 @@ const CustomerPage: NextPage<Props> = (props) => {
                               >
                                 <UserCheck className="w-4 h-4" />
                               </ButtonFill>
-                            ) : (
+                            )  : (
                               ""
                             )}
+                            {
+                              item.edd_status === "Processing" ? (
+                              <ButtonFill
+                                className="px-3 py-2 btn-secondary"
+                                onClick={() =>
+                                  handleApproveEDD(item.user_id, item.fullname)
+                                }
+                                title="Approved EDD"
+                              >
+                                <FileCheck className="w-4 h-4" />
+                              </ButtonFill>
+                            )  : (
+                              ""
+                            )
+                            }
+
                           </div>
                         </td>
                       </tr>
