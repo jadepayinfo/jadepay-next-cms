@@ -40,6 +40,9 @@ export interface Customer {
   reference_code: string | null;
   reference_customer_id: number | null;
   reference_fullname: string | null;
+  edd_status: string | null;
+  edd_approved_by: string | null;
+  edd_approved_at: string | null;
 }
 
 export interface CustomerInfo {
