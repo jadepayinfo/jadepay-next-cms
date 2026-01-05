@@ -705,6 +705,8 @@ const CustomerPage: NextPage<Props> = (props) => {
                                 ?  "bg-blue-900 text-white"
                                 : item.edd_status === "Processing"
                                 ? " bg-yellow-100 text-gray-700"
+                                : item.edd_status === "wait for review"
+                                ? "bg-yellow-100 text-gray-700"
                                 : item.edd_status === "Processing"  ? " bg-gray-100 text-gray-700"
                                 : ""
                             }`}
