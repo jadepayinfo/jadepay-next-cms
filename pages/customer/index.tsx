@@ -705,10 +705,9 @@ const CustomerPage: NextPage<Props> = (props) => {
                                 ?  "bg-blue-900 text-white"
                                 : item.edd_status === "Processing"
                                 ? " bg-yellow-100 text-gray-700"
-                                : item.edd_status === "wait for review"
-                                ? "bg-yellow-100 text-gray-700"
-                                : item.edd_status === "Processing"  ? " bg-gray-100 text-gray-700"
-                                : ""
+                                : item.edd_status === "Approved by Jadepay" 
+                                ? " bg-green-800 text-white"
+                                : " bg-gray-100 text-gray-700"
                             }`}
                           >
                             {item.edd_status != ""
@@ -754,7 +753,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                               ""
                             )}
                             {
-                              item.edd_status === "Processing" ? (
+                              item.kyc_status === "KYC completed" && item.edd_status === "Processing" ? (
                               <ButtonFill
                                 className="px-3 py-2 btn-secondary"
                                 onClick={() =>
