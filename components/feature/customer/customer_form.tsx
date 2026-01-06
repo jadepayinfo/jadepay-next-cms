@@ -1252,6 +1252,16 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
                   : ""}
               </p>
             </div>
+            <div className="flex items-baseline">
+              <label className="block text-sm font-medium text-gray-600 mb-1 mr-2">
+                EDD Approve At :
+              </label>
+              <p className="text-gray-900 text-sm mb-1 mr-2">
+                {kyc?.edd_approved_at
+                  ? dayjs(kyc.edd_approved_at).utc().format("DD/MM/YYYY")
+                  : ""}
+              </p>
+            </div>
           </div>
         </div>
       </div>

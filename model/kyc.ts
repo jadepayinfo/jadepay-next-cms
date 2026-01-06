@@ -55,6 +55,9 @@ export interface KycInfo {
   updated_by: number;
   updated_at: string;
   remark: string;
+  edd_approved_by: string | null;
+  edd_approved_at: string | null;
+  edd_status: string | null;
 }
 
 export interface KycDocument {
