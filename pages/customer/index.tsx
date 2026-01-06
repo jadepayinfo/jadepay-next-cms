@@ -701,7 +701,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>
                            <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              item.edd_status === "Approved"
+                              item.edd_status === "EDD completed"
                                 ?  "bg-blue-900 text-white"
                                 : item.edd_status === "Processing"
                                 ? " bg-yellow-100 text-gray-700"
