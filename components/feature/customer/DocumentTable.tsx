@@ -234,7 +234,7 @@ const DocumentTable: React.FC<Props> = ({
       <div className="flex items-center mb-4">
         <div className="flex items-center">
           <FileText className="w-5 h-5 text-green-600 mr-2" />
-          <h2 className="text-xl font-semibold text-gray-800">Documents</h2>
+          <h2 className="text-xl font-semibold text-gray-800">KYC Documents</h2>
         </div>
       </div>
 

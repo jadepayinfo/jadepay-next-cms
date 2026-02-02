@@ -109,16 +109,16 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   );
 
   const [KycLevel, setKycLevel] = useState(
-    customerInfo?.kyc_data.kyc_data.kyc_level ?? ""
+    customerInfo?.kyc_data?.kyc_data?.kyc_level ?? ""
   );
   const [KycScore, setKycScore] = useState(
-    customerInfo?.kyc_data.kyc_data.kyc_score ?? ""
+    customerInfo?.kyc_data?.kyc_data?.kyc_score ?? ""
   );
   const [KycRiskStatus, setKycRiskStatus] = useState(
-    customerInfo?.kyc_data.kyc_data.kyc_risk_status ?? ""
+    customerInfo?.kyc_data?.kyc_data?.kyc_risk_status ?? ""
   );
   const [KycRemark, setKycRemark] = useState(
-    customerInfo?.kyc_data.kyc_data.remark ?? ""
+    customerInfo?.kyc_data?.kyc_data?.remark ?? ""
   );
 
   // DDL Nationality
@@ -351,14 +351,13 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       }
 
       // Optimistic Update - แสดงรูปที่หมุนแล้วทันทีก่อนอัปโหลด
-      if (optimisticPreviewUrl) {
-        // ล้าง URL เก่าก่อน (ถ้ามี) เพื่อป้องกัน memory leak
+      // สำหรับเอกสารที่ user เลือกไฟล์ใหม่เท่านั้น - เอกสารจาก backend ให้ใช้ imageTimestamps แทน เพื่อไม่ให้ hasUnsavedChanges เป็น true ตลอด
+      const isUserUploadedFile = !!previewFiles[doc.kyc_doc_id];
+      if (optimisticPreviewUrl && isUserUploadedFile) {
         const oldUrl = previewUrls[doc.kyc_doc_id];
         if (oldUrl) {
           URL.revokeObjectURL(oldUrl);
         }
-
-        // อัปเดต UI ทันทีโดยการ batch state updates
         setPreviewUrls((prev) => ({
           ...prev,
           [doc.kyc_doc_id]: optimisticPreviewUrl,
@@ -426,8 +425,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       // ล้างค่า preview files โดยใช้ kyc_doc_id เดิมก่อน (ถ้ามีการเปลี่ยน key)
       setPreviewFiles((prev) => {
         const newFiles = { ...prev };
-        // ลบทั้ง old key (0) และ new key (ถ้าเปลี่ยน)
-        delete newFiles[0];
+        delete newFiles[originalKycDocId];
         delete newFiles[finalKycDocId];
         return newFiles;
       });
@@ -438,6 +436,16 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         ...prev,
         [finalKycDocId]: timestamp,
       }));
+
+      // ล้าง previewUrls หลัง save สำเร็จ เพื่อใช้ API URL แทน และไม่ให้ hasUnsavedChanges ค้าง
+      setPreviewUrls((prev) => {
+        const next = { ...prev };
+        const urlToRevoke = next[originalKycDocId] ?? next[finalKycDocId];
+        if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+        delete next[originalKycDocId];
+        delete next[finalKycDocId];
+        return next;
+      });
 
       alert("อัปโหลดเอกสารสำเร็จ");
     } catch (error) {
@@ -511,8 +519,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     try {
       // 2. รวบรวมข้อมูลจาก state
       const customer: CustomerDataRequest = {
-        customer_id: customerInfo?.customer_data?.customer.customer_id ?? 0,
-        user_id: customerInfo?.customer_data?.customer.user_id ?? 0,
+        customer_id: customerInfo?.customer_data?.customer?.customer_id ?? 0,
+        user_id: customerInfo?.customer_data?.customer?.user_id ?? 0,
         full_name: Fullname,
         email: Email,
         mobile_no: MobileNo,
@@ -619,7 +627,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       ...prev,
       {
         kyc_doc_id: tempId,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        kyc_id: customerInfo?.kyc_data?.kyc_data?.kyc_id,
         doc_type: "selfie",
         document_no: "",
         position: "",
@@ -628,7 +636,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         document_info: "selfie",
         url: "",
         action: "request",
-        user_id: customerInfo?.customer_data.customer.user_id,
+        user_id: customerInfo?.customer_data?.customer?.user_id,
         rotationAngle: 0,
         doctype_id: 0,
         ict_mapping_id: 0,
@@ -643,7 +651,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     try {
       const response = await axios.post("/api/kyc/set-action-document", {
         kyc_doc_id: req.kyc_doc_id,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        kyc_id: customerInfo?.kyc_data?.kyc_data?.kyc_id,
         action: "approved",
         customer_id: req.user_id,
         remark: req.remark,
@@ -683,7 +691,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     reason: string
   ) => {
     try {
-      if (document.kyc_doc_id === 0) {
+        if (document.kyc_doc_id <= 0) {
         setDocuments((prev) => {
           const index = prev.indexOf(document);
           if (index > -1) {
@@ -700,7 +708,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
       if (document.kyc_doc_id != 0) {
         const response = await axios.post("/api/kyc/set-action-document", {
           kyc_doc_id: document.kyc_doc_id,
-          kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+          kyc_id: customerInfo?.kyc_data?.kyc_data?.kyc_id,
           action: "reject",
           customer_id: document.user_id,
           remark: reason,
@@ -735,7 +743,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     try {
       const response = await axios.post("/api/kyc/set-action-document", {
         kyc_doc_id: document.kyc_doc_id,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        kyc_id: customerInfo?.kyc_data?.kyc_data?.kyc_id,
         action: "inactive",
         customer_id: document.user_id,
         remark: reason,
@@ -764,7 +772,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     try {
       const response = await axios.post("/api/kyc/set-action-document", {
         kyc_doc_id: document.kyc_doc_id,
-        kyc_id: customerInfo?.kyc_data.kyc_data.kyc_id,
+        kyc_id: customerInfo?.kyc_data?.kyc_data?.kyc_id,
         action: "review",
         customer_id: document.user_id,
         remark: document.remark,
@@ -832,8 +840,8 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     // set up document
     try {
       const customer: CustomerDataRequest = {
-        customer_id: customerInfo?.customer_data?.customer.customer_id ?? 0,
-        user_id: customerInfo?.customer_data?.customer.user_id ?? 0,
+        customer_id: customerInfo?.customer_data?.customer?.customer_id ?? 0,
+        user_id: customerInfo?.customer_data?.customer?.user_id ?? 0,
         full_name: Fullname,
         email: Email,
         mobile_no: MobileNo,
@@ -917,7 +925,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
         (doc) => doc.status != "approved" && doc.status != "reject"
       ).length;
       if (approvedCount > 0) {
-        alert("ไม่มีเอกสารที่อนุมัติ");
+        alert("มีเอกสารที่ยังไม่อนุมัติ กรุณาตรวจสอบเอกสารให้ครบถ้วน");
         setLoading(false);
         return;
       }
@@ -1130,7 +1138,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
               <div className="p-0.5 ">
                 <p className="text-gray-900 text-sm mb-1 mr-2">
-                  {customerInfo?.customer_data.customer.user_id}
+                  {customerInfo?.customer_data?.customer?.user_id}
                 </p>
               </div>
             </div>
@@ -1142,7 +1150,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
               </div>
               <div className="p-0.5 ">
                 <p className="text-gray-900 text-sm mb-1 mr-2">
-                  {customerInfo?.customer_data.customer.mobile_no}
+                  {customerInfo?.customer_data?.customer?.mobile_no}
                 </p>
               </div>
             </div>

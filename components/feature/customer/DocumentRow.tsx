@@ -122,16 +122,30 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [position, setPosition] = useState(doc.position || "");
   const [issue_country, setIssueCountry] = useState(doc.issue_country || "");
 
-  // Date states
+  // Date states - ใช้ null เมื่อไม่มีวันที่ เพื่อให้ currentData ตรงกับ originalData บน first load
   const dateIssuedString = doc.issued_date ?? "";
   const dateExpiredString = doc.expired_date ?? "";
   const dateIssued = new Date(dateIssuedString);
   const dateExpired = new Date(dateExpiredString);
-  const [issuedDate, setIssuedDate] = useState(() =>
-    initStartDate(dateIssued.getTime() / 1000)
+  const hasValidIssuedDate =
+    dateIssuedString && !isNaN(dateIssued.getTime());
+  const hasValidExpiredDate =
+    dateExpiredString && !isNaN(dateExpired.getTime());
+  const [issuedDate, setIssuedDate] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>(() =>
+    hasValidIssuedDate
+      ? initStartDate(dateIssued.getTime() / 1000)
+      : { startDate: null, endDate: null }
   );
-  const [expiredDate, setExpiredDate] = useState(() =>
-    initStartDate(dateExpired.getTime() / 1000)
+  const [expiredDate, setExpiredDate] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>(() =>
+    hasValidExpiredDate
+      ? initStartDate(dateExpired.getTime() / 1000)
+      : { startDate: null, endDate: null }
   );
 
   const mappedCountry = getCountryCode(country);
@@ -414,11 +428,12 @@ const [justSaved, setJustSaved] = useState(false);
       expiredDate: currentExpiredDate,
     };
 
+    const originalDocInfo = (doc.document_info || "").toLowerCase();
     const originalData = {
       docRole:
-        (doc.document_info || "").toLowerCase().replace(/ /g, "_") +
-        "_" +
-        getCountryCode(country),
+        originalDocInfo === "selfie"
+          ? "selfie"
+          : originalDocInfo.replace(/ /g, "_") + "_" + getCountryCode(country),
       docType: doc.doctype_id,
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
@@ -438,9 +453,8 @@ const [justSaved, setJustSaved] = useState(false);
     setDocType(0);
     setDocIdNo("");
     setPosition("");
-    const dateTemp = new Date("");
-    setIssuedDate(initStartDate(dateTemp.getTime() / 1000));
-    setExpiredDate(initStartDate(dateTemp.getTime() / 1000));
+    setIssuedDate(initStartDate(undefined));
+    setExpiredDate(initStartDate(undefined));
   };
 
   useEffect(() => {
@@ -510,10 +524,9 @@ const [justSaved, setJustSaved] = useState(false);
                   <div className="relative group">
                     <button
                       onClick={handleApprove}
-                      // className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                       disabled={isApproved || isRejected}
                       className={`p-1.5 rounded-lg transition-colors ${
-                        isApproved || !isRejected
+                        !isApproved && !isRejected
                           ? "text-green-600 hover:bg-green-50 cursor-pointer"
                           : "text-gray-400 cursor-not-allowed opacity-50"
                       }`}
@@ -533,10 +546,9 @@ const [justSaved, setJustSaved] = useState(false);
                   <div className="relative group">
                     <button
                       onClick={openRejectModal}
-                      // className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       disabled={isApproved || isRejected}
-                       className={`p-1.5 rounded-lg transition-colors ${
-                        isApproved || !isRejected
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        !isApproved && !isRejected
                           ? "text-red-600 hover:bg-red-50 cursor-pointer"
                           : "text-gray-400 cursor-not-allowed opacity-50"
                       }`}
