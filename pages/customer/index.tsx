@@ -367,13 +367,39 @@ const CustomerPage: NextPage<Props> = (props) => {
               : item
           )
         );
-        setSelectedCustomers([]);
+        
         alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
         handleFilter();
+
+        // call api edd
+        handleEddSend()
+       
       }
     } catch (error) {
       console.error("Submit to ICT error:", error);
       // withAuth interceptor จะจัดการ 401/403 แล้ว
+    } finally {
+      setSelectedCustomers([]);
+    }
+  };
+
+  const handleEddSend = async () => {
+    try {
+      const userId = selectedCustomers
+      const response = await axios.post("/api/ict-partner/submit-edd-to-ict", {
+        user_ids: [userId],
+      });
+      if (response.data?.success !== false) {
+        alert("ส่งข้อมูล EDD ไป ICT สำเร็จ");
+      }
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ??
+        err.response?.data?.error ??
+        err.message ??
+        "ส่งข้อมูล EDD ไม่สำเร็จ";
+      console.error("Error sending EDD documents to 3rd party API: ", err);
+      alert(msg);
     }
   };
 
