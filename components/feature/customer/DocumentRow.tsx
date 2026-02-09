@@ -646,9 +646,9 @@ const [justSaved, setJustSaved] = useState(false);
             <option value={`secondary_document_${mappedCountry}`}>
               Secondary
             </option>
-            <option value={`additional_document_${mappedCountry}`}>
+             <option value={`additional_document_${mappedCountry}`}>
               Additional
-            </option>
+            </option> 
           </select>
         </td>
 

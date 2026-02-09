@@ -84,7 +84,15 @@ export interface KycDocument {
   remark: string | null;
   status: string | null;
   issue_country: string | null;
+  file_type: string | null;
+  document_category: string | null;
 }
+
+/** EDD ใช้ model เดียวกับ API (KycDocument) เฉพาะ document_category = "EDD" + ฟิลด์สำหรับ UI เท่านั้น */
+export type EddDocument = KycDocument & {
+  localFile?: File | null;
+  localPreviewUrl?: string | null;
+};
 
 export interface KycDocumentAction {
   kyc_doc_id: number;

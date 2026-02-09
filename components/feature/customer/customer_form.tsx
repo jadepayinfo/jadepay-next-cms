@@ -1,10 +1,18 @@
-import { FC, FormEventHandler, useEffect, useRef, useState } from "react";
+import {
+  FC,
+  FormEventHandler,
+  useEffect,
+  useRef,
+  useState,
+  ChangeEvent,
+} from "react";
 import {
   CustomerAddressRequest,
   CustomerDataRequest,
   CustomerInfo,
 } from "@/model/customer";
 import DocumentTable from "./DocumentTable";
+import EDDDocumentTable from "./EDDDocumentTable";
 import { useRouter } from "next/router";
 import { getDateTimeNow, unixToDateString } from "@/lib/time";
 import { CatalogueItem } from "@/model/catalogueItem";
@@ -19,7 +27,7 @@ import { IconCalendar } from "@/components/icon";
 import Select from "react-select";
 import { ButtonFill, ButtonOutline } from "@/components/buttons";
 import ImagePopup from "./ImagePopup";
-import { KycDocument } from "@/model/kyc";
+import { EddDocument, KycDocument } from "@/model/kyc";
 import AlertSBD from "@/components/share/modal/alert_sbd";
 import dayjs from "dayjs";
 import MutiAreaInput from "@/components/input/muti_area_input";
@@ -72,6 +80,8 @@ const residentialTypeOption: ResidentialOption[] = [
 const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const router = useRouter();
   const initPage = useRef<boolean>(false);
+const eddFileInputRef = useRef<HTMLInputElement>(null);
+const eddDocumentsRef = useRef<EddDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDocumentActionLoading, setIsDocumentActionLoading] = useState(false);
   const [error, setError] = useState("");
@@ -200,6 +210,14 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
   const [documents, setDocuments] = useState<KycDocument[]>(
     customerInfo?.kyc_data.kyc_documents ?? []
   );
+
+  // EDD documents - โหลดจาก kyc_documents ที่ document_category = EDD (model เดียวกับ API)
+  const [eddDocuments, setEddDocuments] = useState<EddDocument[]>(() => {
+    const kycDocs = customerInfo?.kyc_data?.kyc_documents ?? [];
+    return kycDocs.filter(
+      (d) => d.document_category === "EDD"
+    ) as EddDocument[];
+  });
   const primaryDocs = documents.filter((doc) =>
     doc.document_info?.toLowerCase().includes("primary")
   );
@@ -644,6 +662,201 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     ]);
   };
 
+  const cleanupEddPreviewUrl = (doc: EddDocument) => {
+    if (doc.localPreviewUrl) {
+      URL.revokeObjectURL(doc.localPreviewUrl);
+    }
+  };
+
+  const handleAddEddFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const base = Date.now();
+    const now = new Date().toISOString();
+    setEddDocuments((prev) => [
+      ...prev,
+      ...Array.from(files).map((file, index): EddDocument => ({
+        kyc_doc_id: -(base + index),
+        kyc_id: 0,
+        user_id: customerInfo?.customer_data?.customer?.user_id ?? 0,
+        doctype_id: 0,
+        doc_type: "",
+        position: "",
+        doc_id_no: "",
+        url: "",
+        document_no: file.name,
+        document_info: null,
+        issued_date: null,
+        expired_date: null,
+        created_by: 0,
+        created_at: now,
+        updated_by: 0,
+        updated_at: now,
+        Action: "",
+        rotationAngle: null,
+        action: null,
+        ict_mapping_id: 0,
+        remark: null,
+        status: "pending",
+        issue_country: null,
+        file_type: file.type || null,
+        document_category: "EDD",
+        localFile: file,
+        localPreviewUrl: URL.createObjectURL(file),
+      })),
+    ]);
+  };
+
+  const handleEddUploadClick = () => {
+    eddFileInputRef.current?.click();
+  };
+
+  /** ส่งข้อมูล EDD ไป 3rd party API (payload ตาม SendEDDDocumentRequest: user_ids []int) */
+  const handleEddSend = async () => {
+    try {
+      const userId = customerInfo?.customer_data?.customer?.user_id;
+      if (!userId || userId < 1) {
+        alert("ไม่พบ user_id ของลูกค้า");
+        return;
+      }
+      const response = await axios.post("/api/ict-partner/submit-edd-to-ict", {
+        user_ids: [userId],
+      });
+      if (response.data?.success !== false) {
+        alert("ส่งข้อมูล EDD ไป ICT สำเร็จ");
+      }
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ??
+        err.response?.data?.error ??
+        err.message ??
+        "ส่งข้อมูล EDD ไม่สำเร็จ";
+      console.error("Error sending EDD documents to 3rd party API: ", err);
+      alert(msg);
+    }
+  };
+
+  const handleEddFileInputChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    handleAddEddFiles(event.target.files);
+    event.target.value = "";
+  };
+
+  const handleEddApproveDocument = async (doc: EddDocument) => {
+    if (!doc.doctype_id || doc.doctype_id === 0) {
+      alert("กรุณาเลือก Document Type ก่อนอนุมัติ");
+      return;
+    }
+
+    if (!doc.ict_mapping_id || doc.ict_mapping_id === 0) {
+      alert("กรุณาเลือก ICT Mapping ก่อนอนุมัติ");
+      return;
+    }
+
+    const userId =
+      doc.user_id ??
+      customerInfo?.customer_data?.customer?.user_id ??
+      0;
+    if (!userId) {
+      alert("ไม่พบ user_id");
+      return;
+    }
+
+    setIsDocumentActionLoading(true);
+    try {
+      let fileToUpload: File | null = null;
+      if (doc.localFile) {
+        fileToUpload = doc.localFile;
+      } else if (doc.kyc_doc_id > 0) {
+        const resp = await fetch(
+          `/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`
+        );
+        if (!resp.ok) throw new Error("โหลดไฟล์ไม่สำเร็จ");
+        const blob = await resp.blob();
+        const ext =
+          doc.file_type?.includes("pdf") || doc.document_no?.toLowerCase().endsWith(".pdf")
+            ? "pdf"
+            : "jpg";
+        fileToUpload = new File(
+          [blob],
+          doc.document_no || `document_${doc.kyc_doc_id}.${ext}`,
+          { type: blob.type || (ext === "pdf" ? "application/pdf" : "image/jpeg") }
+        );
+      }
+
+      const formData = new FormData();
+      formData.append("kyc_doc_id", String(doc.kyc_doc_id));
+      formData.append("config_id", String(doc.doctype_id));
+      formData.append("user_id", String(userId));
+      formData.append("key_pass", doc.remark ?? "");
+      formData.append("status", "approved");
+      if (fileToUpload) formData.append("file", fileToUpload);
+
+      await axios.post("/api/edd/upload-edd-doc", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setEddDocuments((prev) =>
+        prev.map((item) =>
+          item.kyc_doc_id === doc.kyc_doc_id
+            ? { ...item, status: "approved" }
+            : item
+        )
+      );
+      alert("อนุมัติเอกสาร EDD สำเร็จ");
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ?? err.message ?? "อนุมัติเอกสาร EDD ไม่สำเร็จ";
+      alert(msg);
+    } finally {
+      setIsDocumentActionLoading(false);
+    }
+  };
+
+  const handleEddDeleteDocument = async (doc: EddDocument) => {
+    cleanupEddPreviewUrl(doc);
+    setEddDocuments((prev) =>
+      prev.filter((item) => item.kyc_doc_id !== doc.kyc_doc_id)
+    );
+  };
+
+  const handleEddIctMappingChange = (doc: EddDocument, ictId: number) => {
+    setEddDocuments((prev) =>
+      prev.map((item) =>
+        item.kyc_doc_id === doc.kyc_doc_id
+          ? { ...item, ict_mapping_id: ictId }
+          : item
+      )
+    );
+  };
+
+  const handleEddDocumentTypeChange = (doc: EddDocument, doctypeId: number) => {
+    setEddDocuments((prev) =>
+      prev.map((item) =>
+        item.kyc_doc_id === doc.kyc_doc_id
+          ? { ...item, doctype_id: doctypeId }
+          : item
+      )
+    );
+  };
+
+  const handleEddFileClick = (doc: EddDocument) => {
+    const targetUrl = doc.localPreviewUrl || doc.url;
+    if (targetUrl) {
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleEddRemarkChange = (doc: EddDocument, value: string) => {
+    setEddDocuments((prev) =>
+      prev.map((item) =>
+        item.kyc_doc_id === doc.kyc_doc_id
+          ? { ...item, remark: value }
+          : item
+      )
+    );
+  };
+
   // เพิ่ม handlers ใหม่ใน CustomerForm component
   // 1. Handler สำหรับ Approve
   const handleApproveDocument = async (req: KycDocument) => {
@@ -1071,6 +1284,26 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
     );
     setSelfieIMG(selfieDoc ?? null);
     setSelfieDOC(selfieDoc);
+  }, []);
+
+  // ซิงค์ eddDocuments จาก API เมื่อ customerInfo/kyc_documents เปลี่ยน (model เดียวกับ API)
+  useEffect(() => {
+    const kycDocs = customerInfo?.kyc_data?.kyc_documents ?? [];
+    const edd = kycDocs.filter(
+      (d) => d.document_category === "EDD"
+    ) as EddDocument[];
+    setEddDocuments(edd);
+  }, [customerInfo?.kyc_data?.kyc_documents]);
+
+  useEffect(() => {
+    eddDocumentsRef.current = eddDocuments;
+  }, [eddDocuments]);
+
+  useEffect(() => {
+    return () => {
+      eddDocumentsRef.current.forEach((doc) => cleanupEddPreviewUrl(doc));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1698,6 +1931,28 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
           handleInactiveDocument={handleInactiveDocument}
           handleReactivateDocument={handleReactivateDocument}
           handleRequiredDocument={handleRequiredDocument}
+        />
+
+        <input
+          type="file"
+          ref={eddFileInputRef}
+          className="hidden"
+          accept=".jpg,.jpeg,.pdf"
+          multiple
+          onChange={handleEddFileInputChange}
+        />
+
+        <EDDDocumentTable
+          documents={eddDocuments}
+          country={ownerNationality?.ict_id ?? ""}
+          onRemarkChange={handleEddRemarkChange}
+          onAddDocument={handleEddUploadClick}
+          onSend={handleEddSend}
+          onApprove={handleEddApproveDocument}
+          onDelete={handleEddDeleteDocument}
+          onIctMappingChange={handleEddIctMappingChange}
+          onDocumentTypeChange={handleEddDocumentTypeChange}
+          onFileClick={handleEddFileClick}
         />
       </fieldset>
       <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
