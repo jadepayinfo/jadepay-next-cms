@@ -211,14 +211,25 @@ const EDDDocumentTable: React.FC<Props> = ({
                   </td>
                   <td className="px-3 py-3 border border-gray-200 text-left">
                     {doc.kyc_doc_id > 0 ? (
-                      <a
-                        href={`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
                         className={`block w-full text-left ${isApproved ? "text-gray-600 hover:text-blue-600 hover:underline" : "text-blue-600 hover:text-blue-800 hover:underline"}`}
+                        onClick={async () => {
+                          try {
+                            const url = `/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`;
+                            const res = await fetch(url, { credentials: "same-origin" });
+                            if (!res.ok) throw new Error(res.statusText);
+                            const blob = await res.blob();
+                            const blobUrl = URL.createObjectURL(blob);
+                            window.open(blobUrl, "_blank", "noopener,noreferrer");
+                          } catch (e) {
+                            console.error(e);
+                            window.open(`/api/kyc/get-document?kyc-doc-id=${doc.kyc_doc_id}`, "_blank");
+                          }
+                        }}
                       >
                         {getDocDisplayName(doc, `file ${index + 1}`)}
-                      </a>
+                      </button>
                     ) : (
                       <button
                         type="button"
