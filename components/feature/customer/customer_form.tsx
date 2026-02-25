@@ -744,7 +744,6 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
 
   const handleEddApproveDocument = async (doc: EddDocument) => {
 
-    alert("handleEddApproveDocument");
     if (!doc.doctype_id || doc.doctype_id === 0) {
       alert("กรุณาเลือก Document Type ก่อนอนุมัติ");
       return;
