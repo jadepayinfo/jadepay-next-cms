@@ -16,9 +16,14 @@ export default async function handler(
       },
       responseType: 'arraybuffer', // สำคัญมากสำหรับรับ binary data
     });
-
-    res.setHeader("Content-Type", "image/jpeg");
-    res.send(response.data); // ส่ง binary image กลับ
+   
+    const contentType =
+      response.headers['content-type'] ?? 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.send(response.data);
 
 
   } catch (error: any) {

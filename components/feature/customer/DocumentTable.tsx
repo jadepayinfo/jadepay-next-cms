@@ -190,7 +190,7 @@ const DocumentTable: React.FC<Props> = ({
           axios.get(`/api/masconfig/get-catalogue`, {
             params: { config_key: "secondary_document_" + mappedCountry },
           }),
-          axios.get(`/api/masconfig/get-catalogue`, {
+          axios.get(`/api/masconfig/get-catalogue-without-status`, {
             params: { config_key: "additional_document_" + mappedCountry },
           }),
           axios.get(`/api/masconfig/get-catalogue`, {
@@ -234,7 +234,7 @@ const DocumentTable: React.FC<Props> = ({
       <div className="flex items-center mb-4">
         <div className="flex items-center">
           <FileText className="w-5 h-5 text-green-600 mr-2" />
-          <h2 className="text-xl font-semibold text-gray-800">Documents</h2>
+          <h2 className="text-xl font-semibold text-gray-800">KYC Documents</h2>
         </div>
       </div>
 
@@ -315,9 +315,15 @@ const DocumentTable: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody>
-              {documents.map((doc, index) => (
+              {documents
+                .map((doc, index) => ({ doc, index }))
+                .filter(
+                  ({ doc }) =>
+                    doc.document_category !== "EDD"
+                )
+                .map(({ doc, index }) => (
                 <DocumentRow
-                  key={`doc-${index}`}
+                  key={doc.kyc_doc_id ?? `doc-${index}`}
                   doc={doc}
                   index={index}
                   country={countryCode}
