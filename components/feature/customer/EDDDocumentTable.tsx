@@ -128,6 +128,7 @@ const EDDDocumentTable: React.FC<Props> = ({
     loadOptions();
   }, [optionsLoaded, mappedCountry]);
 
+  console.log("eddOnlyDocs", eddOnlyDocs);
 
   return (
     <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5 min-w-0">
@@ -196,7 +197,7 @@ const EDDDocumentTable: React.FC<Props> = ({
               </tr>
             ) : (
               sortByMonth(eddOnlyDocs).map(({ doc, order }, index) => {
-                const isApproved = doc.status === "approved";
+                const isApproved = doc.status?.toLowerCase() === "approved";
                 const isReadyToApprove =
                   !isApproved &&
                   doc.doctype_id !== 0 &&
@@ -338,7 +339,7 @@ const EDDDocumentTable: React.FC<Props> = ({
                   <td className="px-3 py-3 border border-gray-200">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        doc.status === "approved"
+                        doc.status?.toLowerCase() === "approved"
                           ? "bg-green-100 text-green-700"
                           : "bg-yellow-100 text-yellow-700"
                       }`}
