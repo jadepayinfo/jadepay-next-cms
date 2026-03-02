@@ -713,6 +713,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   /** ส่งข้อมูล EDD ไป 3rd party API (payload ตาม SendEDDDocumentRequest: user_ids []int) */
   const handleEddSend = async () => {
     try {
+      alert("handleEddSend");
       const userId = customerInfo?.customer_data?.customer?.user_id;
       if (!userId || userId < 1) {
         alert("ไม่พบ user_id ของลูกค้า");
@@ -1934,28 +1935,29 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
           handleRequiredDocument={handleRequiredDocument}
         />
 
-        <input
-          type="file"
-          ref={eddFileInputRef}
-          className="hidden"
-          accept=".jpg,.jpeg,.pdf"
-          multiple
-          onChange={handleEddFileInputChange}
-        />
-
-        <EDDDocumentTable
-          documents={eddDocuments}
-          country={ownerNationality?.ict_id ?? ""}
-          onRemarkChange={handleEddRemarkChange}
-          onAddDocument={handleEddUploadClick}
-          onSend={handleEddSend}
-          onApprove={handleEddApproveDocument}
-          onDelete={handleEddDeleteDocument}
-          onIctMappingChange={handleEddIctMappingChange}
-          onDocumentTypeChange={handleEddDocumentTypeChange}
-          onFileClick={handleEddFileClick}
-        />
       </fieldset>
+
+      {/* EDD อยู่นอก fieldset เพื่อให้ปุ่ม Send ยังกดได้เมื่อ isFormDisabled */}
+      <input
+        type="file"
+        ref={eddFileInputRef}
+        className="hidden"
+        accept=".jpg,.jpeg,.pdf"
+        multiple
+        onChange={handleEddFileInputChange}
+      />
+      <EDDDocumentTable
+        documents={eddDocuments}
+        country={ownerNationality?.ict_id ?? ""}
+        onRemarkChange={handleEddRemarkChange}
+        onAddDocument={handleEddUploadClick}
+        onSend={handleEddSend}
+        onApprove={handleEddApproveDocument}
+        onDelete={handleEddDeleteDocument}
+        onIctMappingChange={handleEddIctMappingChange}
+        onDocumentTypeChange={handleEddDocumentTypeChange}
+        onFileClick={handleEddFileClick}
+      />
       <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-lg mt-5">
         {error !== "" ? (
           <p className="text-error text-center text-[16px]">{error}</p>
