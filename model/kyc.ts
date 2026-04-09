@@ -58,6 +58,8 @@ export interface KycInfo {
   edd_approved_by: string | null;
   edd_approved_at: string | null;
   edd_status: string | null;
+  /** รหัส KYC record เดิมที่ Re-KYC ปัจจุบัน duplicate / สืบทอดมา (ชี้ไปที่ kyc_id ของงาน KYC ก่อนหน้า) */
+  ref_kyc_id: number | null;
 }
 
 export interface KycDocument {

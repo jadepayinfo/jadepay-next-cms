@@ -11,8 +11,9 @@ import {
   CustomerDataRequest,
   CustomerInfo,
 } from "@/model/customer";
-import DocumentTable from "./DocumentTable";
-import EDDDocumentTable from "./EDDDocumentTable";
+import Link from "next/link";
+import DocumentTable from "../DocumentTable";
+import EDDDocumentTable from "../EDDDocumentTable";
 import { useRouter } from "next/router";
 import { getDateTimeNow, unixToDateString } from "@/lib/time";
 import { CatalogueItem } from "@/model/catalogueItem";
@@ -21,17 +22,19 @@ import Datepicker, {
   DateType,
 } from "react-tailwindcss-datepicker";
 import axios from "axios";
-import { User, FileText, BookUser, MapPin } from "lucide-react";
+import { User, FileText, BookUser, MapPin, History, View } from "lucide-react";
 import InputCustom from "@/components/input/input";
 import { IconCalendar } from "@/components/icon";
 import Select from "react-select";
 import { ButtonFill, ButtonOutline } from "@/components/buttons";
-import ImagePopup from "./ImagePopup";
+import ImagePopup from "../ImagePopup";
 import { EddDocument, KycDocument } from "@/model/kyc";
 import AlertSBD from "@/components/share/modal/alert_sbd";
 import dayjs from "dayjs";
 import MutiAreaInput from "@/components/input/muti_area_input";
 import TextareaCustom from "@/components/input/textarea";
+const RE_KYC_QUEUE_PATH = "/customer/re-kyc";
+
 interface Props {
   customerInfo?: CustomerInfo;
 }
@@ -77,12 +80,29 @@ const residentialTypeOption: ResidentialOption[] = [
     label: "Workpermit",
   },
 ];
-const CustomerForm: FC<Props> = ({ customerInfo }) => {
+
+type KycHistoryRow = {
+  key: string;
+  customer_id?: number | null;
+  kyc_id?: number | null;
+  fullname: string | null;
+  kyc_status: string | null;
+  registerDate: string | null;
+  created_at: string | null;  
+  ict_approve_at: string | null;
+  remark: string | null;
+  action: string | null;
+};
+
+const ReKycCustomerForm: FC<Props> = ({ customerInfo }) => {
+  
   const router = useRouter();
   const initPage = useRef<boolean>(false);
 const eddFileInputRef = useRef<HTMLInputElement>(null);
 const eddDocumentsRef = useRef<EddDocument[]>([]);
   const [loading, setLoading] = useState(false);
+  const [kycHistoryRows, setKycHistoryRows] = useState<KycHistoryRow[]>([]);
+  const [kycHistoryLoading, setKycHistoryLoading] = useState(false);
   const [isDocumentActionLoading, setIsDocumentActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [isFormDisabled, setIsFormDisabled] = useState(false);
@@ -210,7 +230,6 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   const [documents, setDocuments] = useState<KycDocument[]>(
     customerInfo?.kyc_data.kyc_documents ?? []
   );
-
   // EDD documents - โหลดจาก kyc_documents ที่ document_category = EDD (model เดียวกับ API)
   const [eddDocuments, setEddDocuments] = useState<EddDocument[]>(() => {
     const kycDocs = customerInfo?.kyc_data?.kyc_documents ?? [];
@@ -620,7 +639,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `Your changes have been saved successfully.`,
+        text: `Re-KYC changes have been saved.`,
         showConfirmButton: false,
       });
     } catch (err: any) {
@@ -859,7 +878,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
     );
   };
 
-  // เพิ่ม handlers ใหม่ใน CustomerForm component
+  // เพิ่ม handlers ใหม่ใน ReKycCustomerForm component
   // 1. Handler สำหรับ Approve
   const handleApproveDocument = async (req: KycDocument) => {
     setIsDocumentActionLoading(true);
@@ -1048,31 +1067,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   };
 
   const handleCancel = () => {
-    router.replace("/customer");
-  };
-
-  const handleGoToReKyc = async () => {
-    const confirmResult = confirm(
-      `ต้องการ Re-KYC สำหรับ ${Fullname} หรือไม่?`
-    );
-    if (!confirmResult) return;
-    try {
-      const response = await axios.post("/api/kyc/manual-rekyc", {
-        kyc_id: customerInfo?.kyc_data?.kyc_data?.kyc_id ?? 0,
-      });
-
-      AlertSBD.fire({
-        icon: "success",
-        titleText: "Successfully!",
-        text: `Re-KYC customer information`,
-        showConfirmButton: false,
-      }).then(() => {
-        router.replace("/customer/re-kyc");
-      });
-      return;
-    } catch (error) {
-      alert("เกิดข้อผิดพลาดในการ  Re-KYC");
-    }
+    router.replace(RE_KYC_QUEUE_PATH);
   };
 
   const handleApproveCustomer = async () => {
@@ -1178,10 +1173,10 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       AlertSBD.fire({
         icon: "success",
         titleText: "Successfully!",
-        text: `Approve customer information`,
+        text: `Approve Re-KYC completed`,
         showConfirmButton: false,
       }).then(() => {
-        router.replace("/customer");
+        router.replace(RE_KYC_QUEUE_PATH);
       });
       return;
     } catch (err: any) {
@@ -1305,6 +1300,11 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   }, []);
 
   useEffect(() => {
+    // keep documents in sync when navigating to another customer/kyc on same page
+    setDocuments(customerInfo?.kyc_data?.kyc_documents ?? []);
+  }, [customerInfo?.kyc_data?.kyc_documents]);
+
+  useEffect(() => {
     const selfieDoc = customerInfo?.kyc_data.kyc_documents?.find(
       (d) => d.document_info === "Selfie"
     );
@@ -1347,13 +1347,66 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
     }
   }, [customerInfo]);
 
+  useEffect(() => {
+    const kycId = customerInfo?.kyc_data?.kyc_data?.kyc_id;
+    if (kycId == null || kycId <= 0) {
+      setKycHistoryRows([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      setKycHistoryLoading(true);
+      try {
+        const res = await axios.get("/api/customer/get-ancestors", {
+          params: { "kyc-id": kycId },
+        });
+        if (cancelled) return;
+        const list = Array.isArray(res.data) ? res.data : [];
+
+        console.log("list", list);
+        const rows: KycHistoryRow[] = list.map((item: any, index: number) => ({
+          key:
+            item?.key ??
+            `kyc-history-${item?.customer_id ?? item?.kyc_id ?? index}`,
+          customer_id:
+            item?.customer_id ??
+            item?.customer?.customer_id ??
+            customerInfo?.customer_data?.customer?.customer_id ??
+            null,
+          kyc_id: item?.kyc_id ?? null,
+          fullname: item?.fullname ?? item?.customer?.fullname ?? null,
+          kyc_status: item?.kyc_status ?? null,
+          registerDate: item?.registerDate ?? item?.kcy_created_at ?? null,
+          created_at: item?.created_at ?? null,
+          ict_approve_at:
+            item?.ict_approve_at ?? item?.operation_approve_at ?? null,
+          remark: item?.remark ?? null,
+          action: item?.action ?? null,
+        }));
+        setKycHistoryRows(rows);
+      } catch {
+        if (!cancelled) setKycHistoryRows([]);
+      } finally {
+        if (!cancelled) setKycHistoryLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    customerInfo?.kyc_data?.kyc_data?.kyc_id,
+    customerInfo?.customer_data?.customer?.customer_id,
+  ]);
+
+  //console.log("kycHistoryRows", kycHistoryRows);
   return (
     <>
       <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
         <div className="flex items-center mb-4">
           <FileText className="w-5 h-5 text-blue-600 mr-2" />
           <h2 className="text-xl font-semibold text-gray-800">
-            Customer Details
+            Re-KYC — Customer Details
           </h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
@@ -1436,35 +1489,6 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
                 </p>
               </div>
             </div>
-            <div className="flex">
-              <div className="p-0.5 w-52">
-                <p className="text-gray-900 text-sm mb-1 mr-2">
-                  My Referral Code:
-                </p>
-              </div>
-               <div className="p-0.5">
-                <p className="text-gray-900 text-sm mb-1 mr-2">
-                  {customerInfo?.customer_data?.customer?.my_reference_code ?? ""}
-                </p>
-              </div>
-            </div>
-            <div className="flex">
-              <div className="p-0.5  w-52">
-                <p className="text-gray-900 text-sm mb-1 mr-2">
-                  Sign up with a referral code :
-                </p>
-              </div>
-              <div className="p-0.5">
-                <a
-                  href={`${window.location.origin}/customer/edit/${customerInfo?.customer_data?.customer?.reference_customer_id}`}
-                  className="text-blue-600 hover:text-blue-800 underline text-sm mb-1 mr-2"
-                >
-                  {customerInfo?.customer_data?.customer?.reference_fullname ??
-                    ""}
-                </a>
-              </div>
-             
-            </div>
           </div>
           <div className="border border-gray-300 rounded-md bg-gray-100 p-4">
             <div className="flex items-baseline">
@@ -1534,7 +1558,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
         </div>
       </div>
       <fieldset disabled={isFormDisabled}>
-        <form onSubmit={submitButtonHandler} id="customerForm">
+        <form onSubmit={submitButtonHandler} id="rekycCustomerForm">
           <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5">
             <div className="flex items-center mb-4">
               <BookUser className="w-5 h-5 text-green-600 mr-2" />
@@ -1929,9 +1953,9 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
             <ButtonFill
               className="btn btn-primary btn-sm p-3 min-h-[38px]"
               type="submit"
-              form="customerForm"
+              form="rekycCustomerForm"
             >
-              {"Save Customer info"}
+              {"Save Re-KYC"}
               {loading && (
                 <span className="ml-1 loading loading-spinner"></span>
               )}
@@ -1988,17 +2012,11 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
           <p className="text-error text-center text-[16px]">{error}</p>
         ) : null}
         <div className="flex gap-4 items-center justify-end">
-          <ButtonFill
-            className="btn btn-warning btn-sm p-3 min-h-[38px]"
-            type="button"
-            onClick={handleGoToReKyc}
-          >
-            Re-KYC
-          </ButtonFill>
           <ButtonOutline
             className="btn btn-sm p-3 min-h-[38px] border-[--border-color] !text-gray-400 hover:!bg-opacity-10  hover:!border-[--border-color]"
             type="button"
             onClick={handleCancel}
+            title="Back to Re-KYC Queue"
           >
             Cancel
           </ButtonOutline>
@@ -2008,7 +2026,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
               type="button"
               onClick={handleApproveCustomer}
             >
-              {"Approved"}
+              {"Approve Re-KYC"}
               {loading && (
                 <span className="ml-1 loading loading-spinner"></span>
               )}
@@ -2039,6 +2057,94 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
           </div>
         </div>
       )}
+<br />
+<div className="p-4 bg-base-200/40 border border-[--border-color] rounded-lg mt-0 border-l-4 border-l-primary">
+        <div className="flex items-center gap-2 mb-2">
+          <History className="w-5 h-5 text-primary shrink-0" />
+          <h2 className="text-lg font-semibold text-gray-800">
+            KYC history
+          </h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">
+          ประวัติ KYC ก่อนหน้า / รอบที่อ้างอิง (รองรับหลายแถวเมื่อมี Re-KYC ซ้ำ)
+        </p>
+        <div className="overflow-x-auto border border-[--border-color] rounded-lg bg-base-100">
+          <table className="table table-sm">
+            <thead>
+              <tr className="border-[--border-color]">
+                <th className="w-12">#</th>
+                <th>Name</th>
+                <th>KYC status</th>
+                <th>CreatedDate</th>
+                <th>KYC Approve Date</th>
+                <th className="min-w-[8rem]">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kycHistoryLoading ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="text-center text-gray-500 py-8 text-sm"
+                  >
+                    <span className="loading loading-spinner loading-md align-middle mr-2" />
+                    กำลังโหลดประวัติ KYC…
+                  </td>
+                </tr>
+              ) : kycHistoryRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="text-center text-gray-500 py-8 text-sm"
+                  >
+                    ยังไม่มีข้อมูลประวัติ
+                  </td>
+                </tr>
+              ) : (
+                kycHistoryRows?.map((row, index) => (
+                  <tr key={row.key} className="hover border-[--border-color]">
+                    <td>{index + 1}</td>
+                    <td className="text-gray-600">{Fullname}</td>
+                    <td className="text-gray-600">{row.kyc_status}</td>
+                    <td className="text-gray-600 whitespace-nowrap">
+                      {row.created_at}
+                    </td>
+                    <td className="text-gray-600 whitespace-nowrap">
+                      {row.ict_approve_at}
+                    </td>
+                    <td className="text-gray-600 whitespace-nowrap">
+                      <ButtonFill
+                        type="button"
+                        className="px-3 py-2 btn-primary"
+                        title="View Details"
+                        disabled={
+                          !(
+                            (row.customer_id ??
+                              customerInfo?.customer_data?.customer?.customer_id) &&
+                            row.kyc_id
+                          )
+                        }
+                        onClick={() => {
+                          const customerId =
+                            row.customer_id ??
+                            customerInfo?.customer_data?.customer?.customer_id;
+                          const kycId = row.kyc_id;
+                          if (!customerId || !kycId) return;
+                          router.push(
+                            `/customer/re-kyc/edit/${customerId}?kyc_id=${kycId}`
+                          );
+                        }}
+                      >
+                        <View className="w-4 h-4" />
+                      </ButtonFill>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </>
   );
 };
@@ -2164,4 +2270,4 @@ export async function rotateImage(blob: Blob, rotation: number): Promise<Blob> {
   });
 }
 
-export default CustomerForm;
+export default ReKycCustomerForm;

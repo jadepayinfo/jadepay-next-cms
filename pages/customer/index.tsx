@@ -87,7 +87,7 @@ const CustomerPage: NextPage<Props> = (props) => {
     setIsFillForm(true);
     setLoading(true);
 
-    let params = `page=${refPage.current}&limit=${limit}`;
+    let params = `is_rekyc=false&page=${refPage.current}&limit=${limit}`;
 
     if (filterUsername) {
       params += `&mobile_no=${filterUsername}`;
@@ -744,7 +744,7 @@ const CustomerPage: NextPage<Props> = (props) => {
                         <td>{item.source}</td>
                         <td>
                           <div className="flex gap-2">
-                            <Link href={`/customer/edit/${item.customer_id}`}>
+                            <Link href={`/customer/detail/edit/${item.customer_id}`}>
                               {item.kyc_status === "Approved by Jadepay" ||
                               item.kyc_status === "Duplicate" ||
                               item.kyc_status === "Waiting for ICT Approval" ||

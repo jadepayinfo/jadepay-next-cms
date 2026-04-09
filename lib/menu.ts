@@ -18,7 +18,24 @@ export const RawDataMenu: SidebarMenuType[] = [
         isActive: false,
         icon: 'user',
         disable: true,
-        sub: []
+        sub: [
+            {
+                menuName: 'customer_detail',
+                path: '/customer/detail',
+                title: 'Customer Detail',
+                isActive: false,
+                icon: 'document',
+                disable: false,
+            },
+            {
+                menuName: 'customer_re_kyc',
+                path: '/customer/re-kyc',
+                title: 'Re-KYC',
+                isActive: false,
+                icon: 'auth-manage',
+                disable: false,
+            }
+        ]
     },
     // {
     //     menuName: '',

@@ -128,8 +128,6 @@ const EDDDocumentTable: React.FC<Props> = ({
     loadOptions();
   }, [optionsLoaded, mappedCountry]);
 
-  console.log("eddOnlyDocs", eddOnlyDocs);
-
   return (
     <div className="p-4 bg-[--bg-panel] border border-[--border-color] rounded-md mt-5 min-w-0">
       {/* Header */}
