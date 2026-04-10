@@ -75,6 +75,7 @@ const ReKycPage = () => {
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState(0);
   const [data, setData] = useState<Customer[]>([]);
+  const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
   const [filterUsername, setFilterUsername] = useState("");
   const [filterName, setFilterName] = useState("");
   const [status, setStatus] = useState<string>("");
@@ -128,6 +129,55 @@ const ReKycPage = () => {
   const handleRefresh = () => {
     refPage.current = 1;
     void handleFilter();
+  };
+
+  const handleCheckboxChange = (customerId: number, checked: boolean) => {
+    setSelectedCustomers((prev) =>
+      checked ? [...prev, customerId] : prev.filter((id) => id !== customerId)
+    );
+  };
+
+  const handleEddSend = async () => {
+    try {
+      const response = await axios.post("/api/ict-partner/submit-edd-to-ict", {
+        user_ids: selectedCustomers,
+      });
+      if (response.data?.success !== false) {
+        alert("ส่งข้อมูล EDD ไป ICT สำเร็จ");
+      }
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ??
+        err.response?.data?.error ??
+        err.message ??
+        "ส่งข้อมูล EDD ไม่สำเร็จ";
+      alert(msg);
+    }
+  };
+
+  const handleProcess = async () => {
+    if (selectedCustomers.length === 0) return;
+    try {
+      const response = await axios.post("/api/ict-partner/submit-to-ict", {
+        user_ids: selectedCustomers,
+      });
+      if (response.status === 200) {
+        setData((prevData) =>
+          prevData.map((item) =>
+            selectedCustomers.includes(item.customer_id)
+              ? { ...item, kyc_status: "Processing" }
+              : item
+          )
+        );
+        alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
+        await handleEddSend();
+        void handleFilter();
+      }
+    } catch (error) {
+      alert("ส่งข้อมูลลูกค้าไปยัง ICT ไม่สำเร็จ");
+    } finally {
+      setSelectedCustomers([]);
+    }
   };
 
   useEffect(() => {
@@ -232,6 +282,7 @@ const ReKycPage = () => {
           <table className="table">
             <thead>
               <tr className="border-[--border-color]">
+                <th></th>
                 <th>Username</th>
                 <th>Name</th>
                 <th>Email</th>
@@ -243,13 +294,28 @@ const ReKycPage = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8">
+                  <td colSpan={7} className="text-center py-8">
                     <span className="loading loading-dots loading-sm text-primary"></span>
                   </td>
                 </tr>
               ) : data.length > 0 ? (
                 data.map((item) => (
                   <tr key={item.customer_id} className="hover border-[--border-color]">
+                    <td>
+                      {item.kyc_status === "Processing" ||
+                      item.kyc_status === "Waiting for ICT Approval" ||
+                      item.kyc_status === "Re-KYC completed" ? (
+                        <div className="w-4 h-4"></div>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={selectedCustomers.includes(item.customer_id)}
+                          onChange={(e) =>
+                            handleCheckboxChange(item.customer_id, e.target.checked)
+                          }
+                        />
+                      )}
+                    </td>
                     <td>{item.mobile_no}</td>
                     <td>{`${item.fullname}`.trim()}</td>
                     <td>{item.email}</td>
@@ -288,7 +354,7 @@ const ReKycPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="text-center py-8">
+                  <td colSpan={7} className="text-center py-8">
                     ไม่พบข้อมูล Re-KYC
                   </td>
                 </tr>
@@ -306,6 +372,16 @@ const ReKycPage = () => {
               void handleFilter();
             }}
           />
+        </div>
+        <div className="flex justify-end mt-4">
+          <ButtonFill
+            className="btn btn-primary btn-sm p-3 min-h-[38px]"
+            type="button"
+            disabled={selectedCustomers.length === 0}
+            onClick={() => void handleProcess()}
+          >
+            send to ICT
+          </ButtonFill>
         </div>
       </div>
     </>
