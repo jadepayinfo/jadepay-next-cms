@@ -2,6 +2,7 @@ import { KycDocument, KycInfo } from "./kyc";
 
 export interface Customer {
   customer_id: number;
+  kyc_id: number;
   user_id: number;
   fullname: string;
   email: string;
@@ -43,6 +44,8 @@ export interface Customer {
   edd_status: string | null;
   edd_approved_by: string | null;
   edd_approved_at: string | null;
+  kcy_created_at: string;
+  kyc_updated_at: string;
 }
 
 export interface CustomerInfo {

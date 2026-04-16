@@ -6,18 +6,11 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-
-    const params = {
-      ...req.query,
-      page: req.query?.page ?? 1,
-      limit: req.query?.limit ?? 10,
-    }
-    console.log("params : " + params);
+    const { ['kyc-id']: kycId } = req.query;
     const accessToken = req.cookies['token']
     const headers = { 'Authorization': `Bearer ${accessToken}` }
-    const response = await Backend.get(`/api/v1/customer/get-list`, { headers , params });   
-    res.json({ success: true, ...response.data.data })
-
+    const response = await Backend.get(`/api/v1/kyc/ancestors/${kycId}`, { headers });
+    res.json(response.data.data )
 
   } catch (error: any) {
     res

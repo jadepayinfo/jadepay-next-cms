@@ -18,7 +18,7 @@ const CustomerEdit: NextPage<Props> = (props) => {
           items={[
             {
               label: "Customer Detail",
-              path: "/customer",
+              path: "/customer/detail",
             },
             {
               label: "Edit Customer Detail",

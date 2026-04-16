@@ -63,6 +63,15 @@ body {
   position: relative;
 }
 
+/* โหมดไอคอน (w-20): กัน label ล้น / พื้นหลัง active หลุดกรอบ */
+.sidebar-icon-rail.menu {
+  li {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 .navbar-custom {
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.25);
 }
