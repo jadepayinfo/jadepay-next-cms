@@ -17,11 +17,20 @@ export default async function handler(
     res.json({ success: true, ...response.data.data })
 
   } catch (error: any) {
-    res
-      .status(500)
-      .send({
-        success: false,
-        message: error.message ?? "Internal Server Error",
-      });
+
+    const status = error.response?.status ?? 500
+    const backendBody = error.response?.data
+    const msg =
+      (typeof backendBody === 'object' && backendBody?.message) ||
+      (typeof backendBody === 'string' ? backendBody : null) ||
+      error.message ||
+      'Internal Server Error'
+
+    console.error('[get-catalogue]', req.query, status, msg, backendBody)
+    res.status(status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      message: msg,
+      ...(typeof backendBody === 'object' && backendBody !== null ? { backend: backendBody } : {}),
+    })
   }
 }
