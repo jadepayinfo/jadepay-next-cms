@@ -372,7 +372,7 @@ const CustomerPage: NextPage<Props> = (props) => {
         handleFilter();
 
         // call api edd
-        handleEddSend()
+       // handleEddSend()
        
       }
     } catch (error) {

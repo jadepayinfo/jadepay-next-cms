@@ -170,7 +170,7 @@ const ReKycPage = () => {
           )
         );
         alert("ส่งข้อมูลลูกค้าไปยัง ICT สำเร็จ");
-        await handleEddSend();
+        //await handleEddSend();
         void handleFilter();
       }
     } catch (error) {
