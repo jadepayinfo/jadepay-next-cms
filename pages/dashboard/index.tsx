@@ -55,6 +55,7 @@ const DashBoardPage: NextPage<Props> = () => {
       setErrorMessage('');
       try {
         const res = await axios.get('/api/dashboard');
+        console.log("dashboard :", res.data);
         if (res.data?.success === false) {
           setErrorMessage(res.data?.message ?? 'ไม่สามารถโหลดข้อมูล dashboard ได้');
           setSummary(null);
@@ -90,30 +91,39 @@ const DashBoardPage: NextPage<Props> = () => {
     hour: 'numeric',
     minute: '2-digit'
   }).format(new Date());
-  const userTrendPath = useMemo(() => {
+  const userTrendBars = useMemo(() => {
     const points = summary?.user_trend ?? [];
-    const width = 300;
-    const height = 80;
-    const topPadding = 12;
-    const bottomPadding = 12;
-
-    if (points.length < 2) {
-      return `M0 ${height / 2} L${width} ${height / 2}`;
+    if (points.length === 0) {
+      return {
+        bars: [] as Array<{ date: string; shortDate: string; value: number; heightPct: number }>,
+        firstDate: '',
+        lastDate: ''
+      };
     }
 
     const values = points.map((item) => Number(item.total_users ?? 0));
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const range = max - min || 1;
+    const hasVariation = max !== min;
+    const range = hasVariation ? max - min : 1;
 
-    return values
-      .map((value, index) => {
-        const x = (index / (values.length - 1)) * width;
-        const normalized = (value - min) / range;
-        const y = height - bottomPadding - normalized * (height - topPadding - bottomPadding);
-        return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
-      })
-      .join(' ');
+    const bars = points.map((item) => {
+      const value = Number(item.total_users ?? 0);
+      const normalized = hasVariation ? (value - min) / range : 0.5;
+      const heightPct = hasVariation ? 30 + normalized * 70 : 55;
+      return {
+        date: item.date,
+        shortDate: item.date.slice(5),
+        value,
+        heightPct
+      };
+    });
+
+    return {
+      bars,
+      firstDate: points[0]?.date ?? '',
+      lastDate: points[points.length - 1]?.date ?? ''
+    };
   }, [summary?.user_trend]);
 
   const statCards = useMemo<StatCard[]>(() => {
@@ -234,21 +244,31 @@ const DashBoardPage: NextPage<Props> = () => {
                   <p className="text-sm text-slate-500 mt-1">All registered users</p>
                 </div>
               </div>
-              <div className="w-full lg:w-[45%] h-20 relative">
+              <div className="w-full lg:w-[45%]">
                 <div className="absolute -top-8 right-0">
                   <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700">
                     {summary?.user_trend_period_days ?? 7} Days
                   </div>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-blue-100/60 to-transparent rounded-lg" />
-                <svg viewBox="0 0 300 80" className="w-full h-full">
-                  <path
-                    d={userTrendPath}
-                    fill="none"
-                    stroke="#2563eb"
-                    strokeWidth="3"
-                  />
-                </svg>
+                <div className="h-24 rounded-lg bg-slate-50 border border-slate-200 px-3 pt-2 pb-1 flex items-end gap-2">
+                  {userTrendBars.bars.map((bar) => (
+                    <div key={bar.date} className="flex-1 flex flex-col items-center justify-end gap-1">
+                      <span className="text-[10px] text-slate-500 leading-none">{bar.value}</span>
+                      <div className="w-full flex items-end justify-center h-12">
+                        <div
+                          className="w-full max-w-5 rounded-sm bg-blue-500/80 hover:bg-blue-600 transition"
+                          style={{ height: `${bar.heightPct}%` }}
+                          title={`${bar.date}: ${bar.value.toLocaleString()}`}
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 leading-none">{bar.shortDate}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>{userTrendBars.firstDate}</span>
+                  <span>{userTrendBars.lastDate}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -1,64 +1,29 @@
-import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import { DashboardCustomer } from '@/lib/dashboard_customers';
 
-dayjs.extend(utc);
-
-interface MonthlyRegisterItem {
-  month: string;
+export interface RegistrationMonth {
+  month: number;
   online: number;
-  fileUpload: number;
+  file_upload: number;
   ict: number;
+  other: number;
+  total: number;
 }
 
 interface Props {
-  customers: DashboardCustomer[];
+  series: RegistrationMonth[];
+  selectedYear: number;
+  yearOptions: number[];
+  onYearChange: (year: number) => void;
 }
 
-export default function RegisterByMonthSection({ customers }: Props) {
-  const currentYear = dayjs().utc().year();
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+const MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
+  dayjs().month(i).format('MMM')
+);
 
-  const yearOptions = useMemo(() => {
-    const years = new Set<number>([currentYear]);
-    customers.forEach((customer) => {
-      const createdAt = dayjs.utc(customer.created_at);
-      if (createdAt.isValid()) years.add(createdAt.year());
-    });
-    return Array.from(years).sort((a, b) => b - a);
-  }, [customers, currentYear]);
-
-  const monthlyRegisterData = useMemo<MonthlyRegisterItem[]>(() => {
-    const initial = Array.from({ length: 12 }, (_, index) => ({
-      month: dayjs.utc().month(index).format('MMM'),
-      online: 0,
-      fileUpload: 0,
-      ict: 0
-    }));
-
-    customers.forEach((customer) => {
-      const createdAt = dayjs.utc(customer.created_at);
-      if (!createdAt.isValid() || createdAt.year() !== selectedYear) return;
-
-      const monthIndex = createdAt.month();
-      const source = (customer.source || '').toLowerCase();
-
-      if (source === 'online') {
-        initial[monthIndex].online += 1;
-      } else if (source === 'fileupload') {
-        initial[monthIndex].fileUpload += 1;
-      } else if (source === 'ict') {
-        initial[monthIndex].ict += 1;
-      }
-    });
-
-    return initial;
-  }, [customers, selectedYear]);
-
-  const maxRegisterValue = Math.max(
+export default function RegisterByMonthSection({ series, selectedYear, yearOptions, onYearChange }: Props) {
+  const maxValue = Math.max(
     1,
-    ...monthlyRegisterData.map((item) => Math.max(item.online, item.fileUpload, item.ict))
+    ...series.map((item) => Math.max(item.online, item.file_upload, item.ict, item.other))
   );
 
   return (
@@ -67,7 +32,7 @@ export default function RegisterByMonthSection({ customers }: Props) {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
             <h2 className="card-title">Total Register by Month ({selectedYear})</h2>
-            <p className="text-sm text-base-content/70">Source: Online / File Upload / ICT</p>
+            <p className="text-sm text-base-content/70">Source: Online / File Upload / ICT / Other</p>
           </div>
           <div className="w-full md:w-56">
             <div className="flex items-center gap-2">
@@ -76,7 +41,7 @@ export default function RegisterByMonthSection({ customers }: Props) {
                 <select
                   className="select w-full border-0 bg-transparent focus:outline-none focus:ring-0"
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  onChange={(e) => onYearChange(Number(e.target.value))}
                 >
                   {yearOptions.map((year) => (
                     <option key={year} value={year}>
@@ -88,6 +53,7 @@ export default function RegisterByMonthSection({ customers }: Props) {
             </div>
           </div>
         </div>
+
         <div className="flex items-center gap-3 text-xs text-base-content/70 mt-1">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-primary" />
@@ -101,28 +67,56 @@ export default function RegisterByMonthSection({ customers }: Props) {
             <span className="w-2.5 h-2.5 rounded-full bg-accent" />
             ICT
           </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-neutral" />
+            Other
+          </span>
         </div>
-        <div className="mt-3 grid grid-cols-12 items-end gap-2 h-52">
-          {monthlyRegisterData.map((item) => (
-            <div key={item.month} className="col-span-1 flex flex-col items-center justify-end gap-2">
-              <div className="w-full flex items-end gap-1 h-full">
+
+        <div className="mt-3 grid grid-cols-12 gap-2 h-52">
+          {series.map((item, idx) => (
+            <div key={item.month} className="col-span-1 flex flex-col">
+              <div className="flex-1 relative flex items-end gap-px">
                 <div
-                  className="flex-1 bg-primary/80 hover:bg-primary rounded-t transition"
-                  style={{ height: `${(item.online / maxRegisterValue) * 100}%` }}
-                  title={`${item.month} Online: ${item.online}`}
-                />
+                  className="flex-1 relative h-full tooltip tooltip-top"
+                  data-tip={`Online: ${item.online}`}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-primary/80 hover:bg-primary rounded-t transition"
+                    style={{ height: `${(item.online / maxValue) * 100}%` }}
+                  />
+                </div>
                 <div
-                  className="flex-1 bg-secondary/80 hover:bg-secondary rounded-t transition"
-                  style={{ height: `${(item.fileUpload / maxRegisterValue) * 100}%` }}
-                  title={`${item.month} File Upload: ${item.fileUpload}`}
-                />
+                  className="flex-1 relative h-full tooltip tooltip-top"
+                  data-tip={`File Upload: ${item.file_upload}`}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-secondary/80 hover:bg-secondary rounded-t transition"
+                    style={{ height: `${(item.file_upload / maxValue) * 100}%` }}
+                  />
+                </div>
                 <div
-                  className="flex-1 bg-accent/80 hover:bg-accent rounded-t transition"
-                  style={{ height: `${(item.ict / maxRegisterValue) * 100}%` }}
-                  title={`${item.month} ICT: ${item.ict}`}
-                />
+                  className="flex-1 relative h-full tooltip tooltip-top"
+                  data-tip={`ICT: ${item.ict}`}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-accent/80 hover:bg-accent rounded-t transition"
+                    style={{ height: `${(item.ict / maxValue) * 100}%` }}
+                  />
+                </div>
+                <div
+                  className="flex-1 relative h-full tooltip tooltip-top"
+                  data-tip={`Other: ${item.other}`}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-neutral/60 hover:bg-neutral rounded-t transition"
+                    style={{ height: `${(item.other / maxValue) * 100}%` }}
+                  />
+                </div>
               </div>
-              <span className="text-xs text-base-content/70">{item.month}</span>
+              <span className="text-xs text-center text-base-content/70 mt-1 leading-none">
+                {MONTH_LABELS[idx]}
+              </span>
             </div>
           ))}
         </div>
