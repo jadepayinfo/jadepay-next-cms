@@ -427,18 +427,38 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       // กำหนด final kyc_doc_id ที่จะใช้ (ใช้ค่าใหม่ถ้ามี ไม่เช่นนั้นใช้ค่าเดิม)
       const finalKycDocId = newKycDocId || doc.kyc_doc_id;
 
-      // อัปเดต kyc_doc_id ใน documents state (รองรับทั้ง 0 และ temporary ID ที่เป็น negative)
-      if (originalKycDocId <= 0 && newKycDocId && docIndex !== -1) {
-        setDocuments((prev) => {
-          const updated = [...prev];
-          // อัปเดตด้วย index โดยตรง
-          updated[docIndex] = { ...updated[docIndex], kyc_doc_id: newKycDocId };
-          return updated;
-        });
+      // Persist the saved control values into parent state before a temp row remounts with the real id.
+      setDocuments((prev) => {
+        const savedDoc = {
+          ...doc,
+          kyc_doc_id: finalKycDocId,
+          action: finalAction,
+          remark: finalRemark,
+        };
 
-        // อัปเดต doc object ให้มีค่า kyc_doc_id ใหม่
-        doc.kyc_doc_id = newKycDocId;
-      }
+        if (
+          docIndex !== -1 &&
+          prev[docIndex]?.kyc_doc_id === originalKycDocId
+        ) {
+          const updated = [...prev];
+          updated[docIndex] = {
+            ...updated[docIndex],
+            ...savedDoc,
+          };
+          return updated;
+        }
+
+        return prev.map((item) =>
+          item.kyc_doc_id === originalKycDocId
+            ? {
+                ...item,
+                ...savedDoc,
+              }
+            : item
+        );
+      });
+
+      doc.kyc_doc_id = finalKycDocId;
 
       // ล้างค่า preview files โดยใช้ kyc_doc_id เดิมก่อน (ถ้ามีการเปลี่ยน key)
       setPreviewFiles((prev) => {
@@ -1257,7 +1277,6 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
         setNationalityList(mapNationality);
         setNationality(NationalitySelected);
         mappingNationality(NationalitySelected);
-
         rawOccupationList.current = resOccupation.data;
         const mapOccupation: SelectOption[] = (
           Object.values(resOccupation.data) as CatalogueItem[]

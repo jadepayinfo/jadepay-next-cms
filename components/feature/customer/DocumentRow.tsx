@@ -65,14 +65,33 @@ const initStartDate = (data?: number) => {
 };
 
 const getCountryCode = (country: string): string => {
-  switch (country) {
+  switch (country.toUpperCase()) {
     case "MMR":
+    case "MM":
       return "mm";
     case "THA":
+    case "TH":
       return "th";
     default:
       return "mm";
   }
+};
+
+const normalizeDocumentRole = (
+  documentInfo: string | null | undefined,
+  country: string
+): string => {
+  const normalized = (documentInfo || "").toLowerCase().trim().replace(/ /g, "_");
+
+  if (!normalized || normalized === "selfie") {
+    return normalized;
+  }
+
+  if (normalized.endsWith("_mm") || normalized.endsWith("_th")) {
+    return normalized;
+  }
+
+  return `${normalized}_${getCountryCode(country)}`;
 };
 
 const DocumentRow: React.FC<DocumentRowProps> = ({
@@ -96,6 +115,7 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   onSelectDoc,
   onValidateDocument,
 }) => {
+
   // Refs
   const idInputRef = useRef<HTMLInputElement>(null);
   const issueDateRef = useRef<HTMLInputElement>(null);
@@ -107,15 +127,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [rejectReason, setRejectReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
   // Document states
-  const [docRole, setDocRole] = useState(() => {
-    const initial = doc.document_info || "";
-    const normalized = initial.toLowerCase();
-    
-    if (normalized === "selfie") {
-      return normalized;
-    }
-    return normalized.replace(/ /g, "_") + "_" + getCountryCode(country);
-  });
+  const [docRole, setDocRole] = useState(() =>
+    normalizeDocumentRole(doc.document_info, country)
+  );
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
   const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
@@ -178,7 +192,14 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     : [];
   // Event handlers
   const handleDocRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setDocRole(e.target.value);
+    const nextDocRole = e.target.value;
+    const nextDocOptions =  getDocumentOptions(nextDocRole);
+    setDocRole(nextDocRole);
+    setDocType((prevDocType) =>
+      nextDocOptions.some((item) => item.value === prevDocType)
+        ? prevDocType
+        : 0
+    );
   };
 
   const handleDateChange = (value: string, isIssued: boolean) => {
@@ -430,10 +451,7 @@ const [justSaved, setJustSaved] = useState(false);
 
     const originalDocInfo = (doc.document_info || "").toLowerCase();
     const originalData = {
-      docRole:
-        originalDocInfo === "selfie"
-          ? "selfie"
-          : originalDocInfo.replace(/ /g, "_") + "_" + getCountryCode(country),
+      docRole: normalizeDocumentRole(originalDocInfo, country),
       docType: doc.doctype_id,
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",

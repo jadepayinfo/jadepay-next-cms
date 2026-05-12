@@ -173,10 +173,12 @@ const DocumentTable: React.FC<Props> = ({
       try {
         const mappedCountry = getCountryCode(country);
         if (!mappedCountry) {
-          console.warn("Unsupported country code for document options:", country);
+          
           return;
         }
+        
         setCountryCode(mappedCountry)
+        
         const [
           resPrimary,
           resSecondary,
