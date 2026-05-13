@@ -5,7 +5,7 @@ import { uploadImage } from '@/lib/upload_image';
 
 interface Props {
   attachments: FileAttachmentType[];
-  onAdd: (file: FileAttachmentType) => void;
+  onAdd: (file: FileAttachmentType) => Promise<void>;
 }
 
 export default function FileAttachment({ attachments, onAdd }: Props) {

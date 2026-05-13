@@ -4,7 +4,7 @@ import { CallLog, CallResult } from '@/model/customer-support';
 
 interface Props {
   callLogs: CallLog[];
-  onAdd: (log: CallLog) => void;
+  onAdd: (log: CallLog) => Promise<void>;
 }
 
 const CALL_RESULTS: CallResult[] = ['ติดต่อได้', 'ไม่รับสาย', 'เครื่องปิด', 'ไม่สามารถติดต่อได้'];
@@ -19,11 +19,11 @@ export default function CallLogForm({ callLogs, onAdd }: Props) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isDone) return;
     setSaving(true);
-    setTimeout(() => {
-      onAdd({
+    try {
+      await onAdd({
         attempt: nextAttempt,
         calledAt: new Date().toISOString(),
         result,
@@ -31,8 +31,9 @@ export default function CallLogForm({ callLogs, onAdd }: Props) {
       });
       setNote('');
       setResult('ไม่รับสาย');
+    } finally {
       setSaving(false);
-    }, 300);
+    }
   };
 
   return (

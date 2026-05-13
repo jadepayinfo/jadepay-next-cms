@@ -3,19 +3,27 @@ import Link from 'next/link';
 import { useState } from 'react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
+import axios from 'axios';
 import withAuth from '@/hoc/with_auth';
 import { Backend, initHeaderWithServerSide } from '@/lib/axios';
-import { useCustomerSupport } from '@/context/customer_support_context';
 import CallLogForm from '@/components/feature/customer-support/CallLogForm';
 import FileAttachmentSection from '@/components/feature/customer-support/FileAttachment';
 import { CustomerInfo } from '@/model/customer';
-import { FileAttachment } from '@/model/customer-support';
+import { CallLog, FileAttachment } from '@/model/customer-support';
 
 dayjs.extend(utc);
+
+interface SupportRecord {
+  callLogs: CallLog[];
+  attachments: FileAttachment[];
+  note: string;
+  status: string;
+}
 
 interface Props {
   customerInfo: CustomerInfo | null;
   customerId: number;
+  initialRecord: SupportRecord | null;
 }
 
 const STATUS_OPTIONS = [
@@ -27,13 +35,13 @@ const STATUS_OPTIONS = [
   'KYC completed',
 ];
 
-const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }) => {
-  const { getRecord, addCallLog, addAttachment, updateStatus } = useCustomerSupport();
-  const record = getRecord(customerId);
-
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [note, setNote] = useState('');
+const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, initialRecord }) => {
+  const [callLogs, setCallLogs] = useState<CallLog[]>(initialRecord?.callLogs ?? []);
+  const [attachments, setAttachments] = useState<FileAttachment[]>(initialRecord?.attachments ?? []);
+  const [selectedStatus, setSelectedStatus] = useState(initialRecord?.status ?? '');
+  const [note, setNote] = useState(initialRecord?.note ?? '');
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   if (!customerInfo) {
     return (
@@ -50,18 +58,29 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }
 
   const customer = customerInfo.customer_data.customer;
 
-  const handleSave = () => {
+  const handleAddCallLog = async (log: CallLog) => {
+    await axios.post(`/api/customer-support/${customerId}/call-log`, log);
+    setCallLogs((prev) => [...prev, log]);
+  };
+
+  const handleAddAttachment = async (file: FileAttachment) => {
+    await axios.post(`/api/customer-support/${customerId}/attachment`, file);
+    setAttachments((prev) => [...prev, file]);
+  };
+
+  const handleSave = async () => {
     if (!selectedStatus) return;
-    updateStatus(customerId, selectedStatus, note);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveError('');
+    try {
+      await axios.put(`/api/customer-support/${customerId}/status`, { status: selectedStatus, note });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError('บันทึกไม่สำเร็จ กรุณาลองใหม่');
+    }
   };
 
-  const handleAddAttachment = (file: FileAttachment) => {
-    addAttachment(customerId, file);
-  };
-
-  const displayStatus = record.updatedStatus || customer.kyc_status;
+  const displayStatus = selectedStatus || customer.kyc_status;
 
   return (
     <div className="p-4 space-y-4 max-w-3xl">
@@ -102,9 +121,9 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }
             </div>
           </div>
 
-          {record.note && (
+          {note && (
             <div className="mt-3 p-3 bg-base-200 rounded-lg text-sm">
-              <span className="font-medium">หมายเหตุ: </span>{record.note}
+              <span className="font-medium">หมายเหตุ: </span>{note}
             </div>
           )}
         </div>
@@ -113,8 +132,8 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }
       <div className="card bg-base-100 shadow-sm border border-base-200">
         <div className="card-body">
           <CallLogForm
-            callLogs={record.callLogs}
-            onAdd={(log) => addCallLog(customerId, log)}
+            callLogs={callLogs}
+            onAdd={handleAddCallLog}
           />
         </div>
       </div>
@@ -122,7 +141,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }
       <div className="card bg-base-100 shadow-sm border border-base-200">
         <div className="card-body">
           <FileAttachmentSection
-            attachments={record.attachments}
+            attachments={attachments}
             onAdd={handleAddAttachment}
           />
         </div>
@@ -172,6 +191,9 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }
             {saved && (
               <span className="text-sm text-success font-medium">บันทึกเรียบร้อย</span>
             )}
+            {saveError && (
+              <span className="text-sm text-error">{saveError}</span>
+            )}
           </div>
         </div>
       </div>
@@ -182,13 +204,23 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId }
 export const getServerSideProps = async (ctx: any) => {
   initHeaderWithServerSide(ctx);
   const { id } = ctx.query;
-  const defaultProps: Props = { customerInfo: null, customerId: Number(id) };
+  const defaultProps: Props = { customerInfo: null, customerId: Number(id), initialRecord: null };
   try {
-    const res = await Backend.get(`/api/v1/customer/getinfo/${id}`);
+    const [customerRes, supportRes] = await Promise.allSettled([
+      Backend.get(`/api/v1/customer/getinfo/${id}`),
+      Backend.get(`/api/v1/customer-support/${id}`),
+    ]);
+
+    const customerInfo =
+      customerRes.status === 'fulfilled' ? (customerRes.value.data?.data as CustomerInfo) ?? null : null;
+    const initialRecord =
+      supportRes.status === 'fulfilled' ? (supportRes.value.data?.data as SupportRecord) ?? null : null;
+
     return {
       props: {
-        customerInfo: (res.data?.data as CustomerInfo) ?? null,
+        customerInfo,
         customerId: Number(id),
+        initialRecord,
       },
     };
   } catch {
