@@ -1,6 +1,7 @@
 import { SidebarMenuType } from "@/model/menu";
 
 export const RawDataMenu: SidebarMenuType[] = [
+   
     {
         menuName: 'dashboard',
         path: '/dashboard',
@@ -9,6 +10,30 @@ export const RawDataMenu: SidebarMenuType[] = [
         icon: 'dash_board',
         disable: true,
         sub: [
+            {
+                menuName: 'register-by-month',
+                path: '/dashboard/register-by-month',
+                title: 'Register By Mounth',
+                isActive: false,
+                icon: 'document',
+                disable: false,
+            },
+            {
+                menuName: 'approve-by-month',
+                path: '/dashboard/approve-by-month',
+                title: 'Approve By Mounth',
+                isActive: false,
+                icon: 'document',
+                disable: false,
+            },
+            {
+                menuName: 'kyc-approve-by-month',
+                path: '/dashboard/kyc-approve-by-month',
+                title: 'KYC Approve By Mounth',
+                isActive: false,
+                icon: 'document',
+                disable: false,
+            },
         ]
     },        
     {
@@ -36,6 +61,15 @@ export const RawDataMenu: SidebarMenuType[] = [
                 disable: false,
             }
         ]
+    },
+    {
+        menuName: 'customer-support',
+        path: '/customer-support',
+        title: 'customer support',
+        isActive: false,
+        icon: 'phone',
+        disable: false,
+        sub: []
     },
     // {
     //     menuName: '',
