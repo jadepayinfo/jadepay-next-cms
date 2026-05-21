@@ -732,7 +732,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   /** ส่งข้อมูล EDD ไป 3rd party API (payload ตาม SendEDDDocumentRequest: user_ids []int) */
   const handleEddSend = async () => {
     try {
-      alert("handleEddSend");
+      //alert("handleEddSend");
       const userId = customerInfo?.customer_data?.customer?.user_id;
       if (!userId || userId < 1) {
         alert("ไม่พบ user_id ของลูกค้า");
