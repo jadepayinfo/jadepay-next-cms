@@ -16,6 +16,9 @@ export interface FileAttachment {
   name: string;
   url: string;
   uploadedAt: string;
+  documentInfo?: string;
+  doctypeId?: number;
+  position?: string;
 }
 
 export interface CustomerSupportItem {

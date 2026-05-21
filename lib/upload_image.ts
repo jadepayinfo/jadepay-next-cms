@@ -1,5 +1,23 @@
 import axios from "axios";
 
+const extractUploadUrl = (payload: unknown): string => {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload.trim();
+  }
+
+  if (payload && typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    const candidates = ["url", "location", "s3_location", "path", "file_url"];
+    for (const key of candidates) {
+      if (typeof obj[key] === "string" && (obj[key] as string).trim()) {
+        return (obj[key] as string).trim();
+      }
+    }
+  }
+
+  throw new Error("Invalid upload response: missing file URL");
+};
+
 export const uploadImage = async (file: File, prefix?: string): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file, file.name);
@@ -7,12 +25,8 @@ export const uploadImage = async (file: File, prefix?: string): Promise<string> 
 
     const response = await axios.post('/api/upload/upload-image', formData);
 
-    // Handle different response structures
-    const data = response.data.data ;
-
-    const s3_location = data;
-
-    return s3_location;
+    const data = response.data?.data ?? response.data;
+    return extractUploadUrl(data);
 };
 
 export const base64ToFile = (base64String: string, filename: string): File | null => {

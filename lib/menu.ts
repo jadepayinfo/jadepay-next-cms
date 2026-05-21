@@ -1,15 +1,7 @@
 import { SidebarMenuType } from "@/model/menu";
 
 export const RawDataMenu: SidebarMenuType[] = [
-    {
-        menuName: 'customer-support',
-        path: '/customer-support',
-        title: 'ติดตามเอกสาร',
-        isActive: false,
-        icon: 'phone',
-        disable: false,
-        sub: []
-    },
+   
     {
         menuName: 'dashboard',
         path: '/dashboard',
@@ -69,6 +61,15 @@ export const RawDataMenu: SidebarMenuType[] = [
                 disable: false,
             }
         ]
+    },
+    {
+        menuName: 'customer-support',
+        path: '/customer-support',
+        title: 'customer support',
+        isActive: false,
+        icon: 'phone',
+        disable: false,
+        sub: []
     },
     // {
     //     menuName: '',
