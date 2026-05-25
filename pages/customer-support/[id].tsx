@@ -36,12 +36,7 @@ interface Props {
 }
 
 const STATUS_OPTIONS = [
-  'Pending',
   'wait for review',
-  'Operation save',
-  'Approved by Jadepay',
-  'Processing',
-  'KYC completed',
 ];
 
 const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, initialRecord }) => {
@@ -302,7 +297,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
     if (!selectedStatus) return;
     setSaveError('');
     try {
-      await axios.put(`/api/customer-support/${customerId}/status`, { status: selectedStatus, note });
+      await axios.put(`/api/customer-support/${customerId}/status`, { status: 'wait for review', note });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
@@ -403,7 +398,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
         <div className="card-body space-y-3">
           <h3 className="font-semibold text-base">อัปเดตสถานะ</h3>
 
-          <div className="form-control">
+          {/* <div className="form-control">
             <label className="label py-0">
               <span className="label-text text-xs">สถานะ</span>
             </label>
@@ -417,7 +412,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-          </div>
+          </div> */}
 
           <div className="form-control">
             <label className="label py-0">
@@ -436,7 +431,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
             <button
               className="btn btn-sm btn-primary"
               onClick={handleSave}
-              disabled={!selectedStatus}
+              // disabled={!selectedStatus}
             >
               บันทึก
             </button>
