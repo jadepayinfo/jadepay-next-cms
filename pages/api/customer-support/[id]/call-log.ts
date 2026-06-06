@@ -7,8 +7,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { id } = req.query;
     const accessToken = req.cookies['token'];
     const headers = { Authorization: `Bearer ${accessToken}` };
-    await Backend.post(`/api/v1/customer-support/${id}/call-logs`, req.body, { headers });
-    res.json({ success: true });
+    const response = await Backend.post(`/api/v1/customer-support/${id}/call-logs`, req.body, { headers });
+    res.json({ success: true, data: response.data?.data ?? response.data });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message ?? 'Internal Server Error' });
   }
