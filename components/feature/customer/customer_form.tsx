@@ -1150,17 +1150,22 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       };
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
-
-      const allApproved = documents.every(
+     
+      const kycDocuments = documents.filter(
+        (doc) => doc.document_category !== "EDD"
+      );
+      const allApproved = kycDocuments.every(
         (doc) => doc.status === "approved" || doc.status === "reject"
       );
+
+      console.log("allApproved : ", allApproved);
       if (!allApproved) {
         //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
         alert("เอกสารยังอนุมัติไม่เรียบร้อย");
         setLoading(false);
         return;
       }
-      const approvedCount = documents.filter(
+      const approvedCount = kycDocuments.filter(
         (doc) => doc.status != "approved" && doc.status != "reject"
       ).length;
       if (approvedCount > 0) {
