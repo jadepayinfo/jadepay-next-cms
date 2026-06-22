@@ -1067,11 +1067,11 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
     if (!customerId) return;
 
     const confirmResult = confirm(
-      `ต้องการตีกลับสถานะเป็น Pending สำหรับ ${Fullname} หรือไม่?`
+      `Reset status to Pending for ${Fullname}?`
     );
     if (!confirmResult) return;
 
-    const noteInput = prompt("หมายเหตุ:", "reset to pending");
+    const noteInput = prompt("Note:", "reset to pending");
     if (noteInput === null) return;
 
     setResetPendingLoading(true);
@@ -1084,13 +1084,13 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       );
       AlertSBD.fire({
         icon: "success",
-        titleText: "ตีกลับสำเร็จ",
-        text: "สถานะถูกเปลี่ยนเป็น Pending",
+        titleText: "Reset successful",
+        text: "Status has been changed to Pending",
         showConfirmButton: false,
         timer: 2000,
       });
     } catch {
-      alert("ตีกลับไม่สำเร็จ กรุณาลองใหม่");
+      alert("Reset failed. Please try again.");
     } finally {
       setResetPendingLoading(false);
     }
@@ -1397,9 +1397,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
     }
   }, [customerInfo]);
 
-  const canResetPending =
-    kyc?.kyc_status === "wait for review" ||
-    kyc?.kyc_status === "Submitted to Jadepay";
+  const isKycPending = kyc?.kyc_status === "Pending";
 
   return (
     <>
@@ -2042,19 +2040,18 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
           <p className="text-error text-center text-[16px]">{error}</p>
         ) : null}
         <div className="flex gap-4 items-center justify-end">
-          {canResetPending && (
-            <ButtonFill
-              className="btn btn-error btn-sm p-3 min-h-[38px]"
-              type="button"
-              onClick={handleResetPending}
-              disabled={resetPendingLoading}
-            >
-              ตีกลับ
-              {resetPendingLoading && (
-                <span className="ml-1 loading loading-spinner loading-xs" />
-              )}
-            </ButtonFill>
-          )}
+          <ButtonFill
+            className="btn btn-error btn-sm p-3 min-h-[38px]"
+            type="button"
+            onClick={handleResetPending}
+            disabled={isKycPending || resetPendingLoading}
+            title={isKycPending ? "Status is already Pending" : undefined}
+          >
+            Reset to Pending
+            {resetPendingLoading && (
+              <span className="ml-1 loading loading-spinner loading-xs" />
+            )}
+          </ButtonFill>
           <ButtonFill
             className="btn btn-warning btn-sm p-3 min-h-[38px]"
             type="button"
