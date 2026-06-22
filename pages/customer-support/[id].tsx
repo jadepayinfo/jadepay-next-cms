@@ -56,6 +56,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
   const [isNoteLocked, setIsNoteLocked] = useState(Boolean(initialRecord?.note?.trim()));
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [resetPendingLoading, setResetPendingLoading] = useState(false);
   const [countryCode, setCountryCode] = useState('');
   const [globalOptions, setGlobalOptions] = useState<DocumentGlobalOptions>({
     primary: [],
@@ -319,7 +320,31 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
     if (isNoteLocked) setIsNoteLocked(false);
   };
 
+  const handleResetPending = async () => {
+    const confirmResult = confirm('Reset status to Pending?');
+    if (!confirmResult) return;
+
+    const noteInput = prompt('Note:', 'reset to pending');
+    if (noteInput === null) return;
+
+    setResetPendingLoading(true);
+    setSaveError('');
+    try {
+      await axios.put(`/api/customer-support/${customerId}/reset-pending`, {
+        note: noteInput.trim() || 'reset to pending',
+      });
+      setSelectedStatus('');
+      setIsNoteLocked(false);
+      setLastSavedNote(note);
+    } catch {
+      setSaveError('Reset failed. Please try again.');
+    } finally {
+      setResetPendingLoading(false);
+    }
+  };
+
   const displayStatus = selectedStatus || customer.kyc_status;
+  const isKycPending = displayStatus === 'Pending';
 
   return (
     <div className="p-4 space-y-4 max-w-3xl">
@@ -446,13 +471,25 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               className={`btn btn-sm ${canSaveNote ? 'btn-success' : 'btn-disabled'}`}
               onClick={handleSave}
               disabled={!canSaveNote}
             >
               บันทึก
+            </button>
+            <button
+              className={`btn btn-sm ${isKycPending ? 'btn-disabled' : 'btn-error'}`}
+              onClick={handleResetPending}
+              disabled={isKycPending || resetPendingLoading}
+              title={isKycPending ? 'Status is already Pending' : undefined}
+            >
+              {resetPendingLoading ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                'Reset to Pending'
+              )}
             </button>
             {saved && (
               <span className="text-sm text-success font-medium">บันทึกเรียบร้อย</span>
