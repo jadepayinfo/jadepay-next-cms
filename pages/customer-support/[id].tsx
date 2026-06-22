@@ -52,6 +52,8 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
   const [currentAttachmentId, setCurrentAttachmentId] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState(initialRecord?.status ?? '');
   const [note, setNote] = useState(initialRecord?.note ?? '');
+  const [lastSavedNote, setLastSavedNote] = useState(initialRecord?.note ?? '');
+  const [isNoteLocked, setIsNoteLocked] = useState(Boolean(initialRecord?.note?.trim()));
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [countryCode, setCountryCode] = useState('');
@@ -126,8 +128,9 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
   const customer = customerInfo.customer_data.customer;
 
   const handleAddCallLog = async (log: CallLog) => {
-    await axios.post(`/api/customer-support/${customerId}/call-log`, log);
-    setCallLogs((prev) => [...prev, log]);
+    const res = await axios.post(`/api/customer-support/${customerId}/call-log`, log);
+    const saved = (res.data?.data ?? log) as CallLog;
+    setCallLogs((prev) => [...prev, saved]);
   };
 
   const cleanupPreview = (id: string) => {
@@ -294,15 +297,26 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
   };
 
   const handleSave = async () => {
-    if (!selectedStatus) return;
+    if (!note.trim() || note === lastSavedNote) return;
     setSaveError('');
     try {
-      await axios.put(`/api/customer-support/${customerId}/status`, { status: 'wait for review', note });
+      await axios.put(`/api/customer-support/${customerId}/status`, {
+        status: 'Submitted to Jadepay',
+        note,
+      });
+      setLastSavedNote(note);
+      setIsNoteLocked(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
       setSaveError('บันทึกไม่สำเร็จ กรุณาลองใหม่');
     }
+  };
+
+  const canSaveNote = note.trim().length > 0 && note !== lastSavedNote;
+
+  const handleNoteFocus = () => {
+    if (isNoteLocked) setIsNoteLocked(false);
   };
 
   const displayStatus = selectedStatus || customer.kyc_status;
@@ -419,19 +433,24 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
               <span className="label-text text-xs">หมายเหตุ</span>
             </label>
             <textarea
-              className="textarea textarea-bordered textarea-sm w-full"
+              className={`textarea textarea-bordered textarea-sm w-full ${
+                isNoteLocked ? 'bg-base-200 text-base-content/70 cursor-text' : ''
+              }`}
               rows={3}
-              placeholder="บันทึกเพิ่มเติม..."
+              placeholder={isNoteLocked ? 'คลิกเพื่อแก้ไขหมายเหตุ' : 'บันทึกเพิ่มเติม...'}
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              onFocus={handleNoteFocus}
+              onClick={handleNoteFocus}
+              readOnly={isNoteLocked}
             />
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              className="btn btn-sm btn-primary"
+              className={`btn btn-sm ${canSaveNote ? 'btn-success' : 'btn-disabled'}`}
               onClick={handleSave}
-              // disabled={!selectedStatus}
+              disabled={!canSaveNote}
             >
               บันทึก
             </button>

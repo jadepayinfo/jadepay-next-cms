@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
+import { useAuth } from '@/context/auth_context';
 import { CallLog, CallResult } from '@/model/customer-support';
 
 interface Props {
@@ -12,6 +13,8 @@ const CALL_RESULTS: CallResult[] = ['ติดต่อได้', 'ไม่ร
 const ATTEMPT_LABELS = ['ครั้งที่ 1', 'ครั้งที่ 2', 'ครั้งที่ 3'];
 
 export default function CallLogForm({ callLogs, onAdd }: Props) {
+  const { user } = useAuth();
+  const followUpBy = user?.Name || user?.Username || '-';
   const nextAttempt = (callLogs.length + 1) as 1 | 2 | 3;
   const isDone = callLogs.length >= 3;
 
@@ -71,6 +74,11 @@ export default function CallLogForm({ callLogs, onAdd }: Props) {
                   {dayjs(log.calledAt).format('DD/MM/YYYY HH:mm')}
                 </span>
               )}
+              {log?.followUpBy && (
+                <span className="badge badge-sm badge-outline text-xs">
+                  ผู้ follow up: {log.followUpBy}
+                </span>
+              )}
             </div>
 
             {log ? (
@@ -89,6 +97,9 @@ export default function CallLogForm({ callLogs, onAdd }: Props) {
               </div>
             ) : isActive ? (
               <div className="space-y-3 mt-2">
+                <p className="text-xs text-base-content/60">
+                  ผู้ follow up: <span className="font-medium text-base-content">{followUpBy}</span>
+                </p>
                 <div className="form-control">
                   <label className="label py-0">
                     <span className="label-text text-xs">ผลการโทร</span>

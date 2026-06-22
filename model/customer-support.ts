@@ -9,6 +9,7 @@ export interface CallLog {
   calledAt: string;
   result: CallResult;
   note: string;
+  followUpBy?: string;
 }
 
 export interface FileAttachment {
@@ -19,6 +20,42 @@ export interface FileAttachment {
   documentInfo?: string;
   doctypeId?: number;
   position?: string;
+}
+
+export interface CustomerSupportFieldInfo {
+  name: string;
+  email: string;
+  mobileNo: string;
+  gender: string;
+  marital: string;
+}
+
+export type CustomerSupportStage =
+  | 'Pending'
+  | '1st Follow up'
+  | '2nd Follow up'
+  | 'Submitted to Jadepay'
+  | 'Cancelled by Customer';
+
+export const CUSTOMER_SUPPORT_STAGE_OPTIONS: { value: CustomerSupportStage; label: string }[] = [
+  { value: 'Pending', label: 'Pending' },
+  { value: '1st Follow up', label: '1st Follow up' },
+  { value: '2nd Follow up', label: '2nd Follow up' },
+  { value: 'Submitted to Jadepay', label: 'Submitted to Jadepay' },
+  { value: 'Cancelled by Customer', label: 'Cancelled by Customer' },
+];
+
+export interface CustomerSupportListItem {
+  customer_id: number;
+  fullname: string;
+  email: string;
+  gender: string;
+  marital: string;
+  mobile_no: string;
+  source: string | null;
+  created_at: string;
+  kyc_status: string;
+  support_stage: CustomerSupportStage;
 }
 
 export interface CustomerSupportItem {
