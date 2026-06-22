@@ -76,6 +76,41 @@ const getCountryCode = (country: string): string => {
   }
 };
 
+const normalizeDocRole = (documentInfo: string, country: string): string => {
+  const normalized = (documentInfo || "").toLowerCase().trim();
+  if (!normalized) return "";
+  if (normalized === "selfie") return "selfie";
+
+  const withUnderscores = normalized.replace(/ /g, "_");
+  if (withUnderscores.includes("_document_")) {
+    return withUnderscores;
+  }
+
+  const countrySuffix = `_${getCountryCode(country)}`;
+  if (withUnderscores.endsWith(countrySuffix)) {
+    return withUnderscores;
+  }
+
+  return `${withUnderscores}${countrySuffix}`;
+};
+
+const syncDateState = (
+  dateString: string | null | undefined,
+  setDate: (value: { startDate: Date | null; endDate: Date | null }) => void,
+  setInput: (value: string) => void
+) => {
+  const hasValue = dateString && !isNaN(new Date(dateString).getTime());
+  if (!hasValue) {
+    setDate({ startDate: null, endDate: null });
+    setInput("");
+    return;
+  }
+
+  const parsed = new Date(dateString!);
+  setDate(initStartDate(parsed.getTime() / 1000));
+  setInput(formatDateDisplay(parsed));
+};
+
 const formatDateDisplay = (date: Date | null | undefined): string => {
   if (!date || isNaN(date.getTime())) return "";
   const day = String(date.getDate()).padStart(2, "0");
@@ -228,15 +263,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [rejectReason, setRejectReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
   // Document states
-  const [docRole, setDocRole] = useState(() => {
-    const initial = doc.document_info || "";
-    const normalized = initial.toLowerCase();
-    
-    if (normalized === "selfie") {
-      return normalized;
-    }
-    return normalized.replace(/ /g, "_") + "_" + getCountryCode(country);
-  });
+  const [docRole, setDocRole] = useState(() =>
+    normalizeDocRole(doc.document_info || "", country)
+  );
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
   const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
@@ -581,10 +610,7 @@ const [justSaved, setJustSaved] = useState(false);
 
     const originalDocInfo = (doc.document_info || "").toLowerCase();
     const originalData = {
-      docRole:
-        originalDocInfo === "selfie"
-          ? "selfie"
-          : originalDocInfo.replace(/ /g, "_") + "_" + getCountryCode(country),
+      docRole: normalizeDocRole(originalDocInfo, country),
       docType: doc.doctype_id,
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
@@ -607,6 +633,36 @@ const [justSaved, setJustSaved] = useState(false);
     setIssuedDate(initStartDate(undefined));
     setExpiredDate(initStartDate(undefined));
   };
+
+  const docSyncKey = [
+    doc.kyc_doc_id,
+    doc.doctype_id,
+    doc.document_no,
+    doc.position,
+    doc.issued_date,
+    doc.expired_date,
+    doc.ict_mapping_id,
+    doc.issue_country,
+    doc.document_info,
+  ].join("|");
+
+  const lastSyncedDocKey = useRef(docSyncKey);
+
+  useEffect(() => {
+    if (hasUnsavedChanges || justSaved) return;
+    if (lastSyncedDocKey.current === docSyncKey) return;
+
+    lastSyncedDocKey.current = docSyncKey;
+    const nextRole = normalizeDocRole(doc.document_info || "", country);
+    if (nextRole !== docRole) setDocRole(nextRole);
+    if (doc.doctype_id !== docType) setDocType(doc.doctype_id);
+    setDocIdNo(doc.document_no ?? "");
+    setICTID(doc.ict_mapping_id ?? 0);
+    setPosition(doc.position || "");
+    setIssueCountry(doc.issue_country || "");
+    syncDateState(doc.issued_date, setIssuedDate, setIssuedDateInput);
+    syncDateState(doc.expired_date, setExpiredDate, setExpiredDateInput);
+  }, [docSyncKey, hasUnsavedChanges, justSaved, country, doc]);
 
   useEffect(() => {
     if (justSaved) {

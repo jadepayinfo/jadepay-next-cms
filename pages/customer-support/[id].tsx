@@ -53,6 +53,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
   const [selectedStatus, setSelectedStatus] = useState(initialRecord?.status ?? '');
   const [note, setNote] = useState(initialRecord?.note ?? '');
   const [lastSavedNote, setLastSavedNote] = useState(initialRecord?.note ?? '');
+  const [isNoteLocked, setIsNoteLocked] = useState(Boolean(initialRecord?.note?.trim()));
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [countryCode, setCountryCode] = useState('');
@@ -296,7 +297,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
   };
 
   const handleSave = async () => {
-    if (note === lastSavedNote) return;
+    if (!note.trim() || note === lastSavedNote) return;
     setSaveError('');
     try {
       await axios.put(`/api/customer-support/${customerId}/status`, {
@@ -304,6 +305,7 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
         note,
       });
       setLastSavedNote(note);
+      setIsNoteLocked(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
@@ -311,7 +313,11 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
     }
   };
 
-  const hasUnsavedNote = note !== lastSavedNote;
+  const canSaveNote = note.trim().length > 0 && note !== lastSavedNote;
+
+  const handleNoteFocus = () => {
+    if (isNoteLocked) setIsNoteLocked(false);
+  };
 
   const displayStatus = selectedStatus || customer.kyc_status;
 
@@ -427,19 +433,24 @@ const CustomerSupportDetailPage: NextPage<Props> = ({ customerInfo, customerId, 
               <span className="label-text text-xs">หมายเหตุ</span>
             </label>
             <textarea
-              className="textarea textarea-bordered textarea-sm w-full"
+              className={`textarea textarea-bordered textarea-sm w-full ${
+                isNoteLocked ? 'bg-base-200 text-base-content/70 cursor-text' : ''
+              }`}
               rows={3}
-              placeholder="บันทึกเพิ่มเติม..."
+              placeholder={isNoteLocked ? 'คลิกเพื่อแก้ไขหมายเหตุ' : 'บันทึกเพิ่มเติม...'}
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              onFocus={handleNoteFocus}
+              onClick={handleNoteFocus}
+              readOnly={isNoteLocked}
             />
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              className={`btn btn-sm ${hasUnsavedNote ? 'btn-success' : 'btn-disabled'}`}
+              className={`btn btn-sm ${canSaveNote ? 'btn-success' : 'btn-disabled'}`}
               onClick={handleSave}
-              disabled={!hasUnsavedNote}
+              disabled={!canSaveNote}
             >
               บันทึก
             </button>
