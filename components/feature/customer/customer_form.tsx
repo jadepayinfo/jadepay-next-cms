@@ -83,6 +83,7 @@ const CustomerForm: FC<Props> = ({ customerInfo }) => {
 const eddFileInputRef = useRef<HTMLInputElement>(null);
 const eddDocumentsRef = useRef<EddDocument[]>([]);
   const [loading, setLoading] = useState(false);
+  const [resetPendingLoading, setResetPendingLoading] = useState(false);
   const [isDocumentActionLoading, setIsDocumentActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [isFormDisabled, setIsFormDisabled] = useState(false);
@@ -424,21 +425,31 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       });
 
       const newKycDocId = response.data.Body.data.kyc_doc_id;
-      // กำหนด final kyc_doc_id ที่จะใช้ (ใช้ค่าใหม่ถ้ามี ไม่เช่นนั้นใช้ค่าเดิม)
       const finalKycDocId = newKycDocId || doc.kyc_doc_id;
 
-      // อัปเดต kyc_doc_id ใน documents state (รองรับทั้ง 0 และ temporary ID ที่เป็น negative)
-      if (originalKycDocId <= 0 && newKycDocId && docIndex !== -1) {
-        setDocuments((prev) => {
-          const updated = [...prev];
-          // อัปเดตด้วย index โดยตรง
-          updated[docIndex] = { ...updated[docIndex], kyc_doc_id: newKycDocId };
-          return updated;
-        });
+      setDocuments((prev) =>
+        prev.map((d, i) => {
+          const isMatch =
+            docIndex !== -1
+              ? i === docIndex
+              : d.kyc_doc_id === originalKycDocId;
+          if (!isMatch) return d;
 
-        // อัปเดต doc object ให้มีค่า kyc_doc_id ใหม่
-        doc.kyc_doc_id = newKycDocId;
-      }
+          return {
+            ...d,
+            kyc_doc_id: finalKycDocId,
+            doctype_id: doc.doctype_id,
+            document_info: doc.document_info,
+            position: doc.position,
+            document_no: doc.document_no,
+            issued_date: doc.issued_date,
+            expired_date: doc.expired_date,
+            ict_mapping_id: doc.ict_mapping_id,
+            issue_country: doc.issue_country,
+            status: doc.status,
+          };
+        })
+      );
 
       // ล้างค่า preview files โดยใช้ kyc_doc_id เดิมก่อน (ถ้ามีการเปลี่ยน key)
       setPreviewFiles((prev) => {
@@ -713,7 +724,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   /** ส่งข้อมูล EDD ไป 3rd party API (payload ตาม SendEDDDocumentRequest: user_ids []int) */
   const handleEddSend = async () => {
     try {
-      alert("handleEddSend");
+     // alert("handleEddSend");
       const userId = customerInfo?.customer_data?.customer?.user_id;
       if (!userId || userId < 1) {
         alert("ไม่พบ user_id ของลูกค้า");
@@ -1051,6 +1062,40 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
     router.replace("/customer");
   };
 
+  const handleResetPending = async () => {
+    const customerId = customerInfo?.customer_data?.customer?.customer_id;
+    if (!customerId) return;
+
+    const confirmResult = confirm(
+      `Reset status to Pending for ${Fullname}?`
+    );
+    if (!confirmResult) return;
+
+    const noteInput = prompt("Note:", "reset to pending");
+    if (noteInput === null) return;
+
+    setResetPendingLoading(true);
+    try {
+      await axios.put(`/api/customer-support/${customerId}/reset-pending`, {
+        note: noteInput.trim() || "reset to pending",
+      });
+      setKyc((prev) =>
+        prev ? { ...prev, kyc_status: "Pending", step: "Pending" } : prev
+      );
+      AlertSBD.fire({
+        icon: "success",
+        titleText: "Reset successful",
+        text: "Status has been changed to Pending",
+        showConfirmButton: false,
+        timer: 2000,
+      });
+    } catch {
+      alert("Reset failed. Please try again.");
+    } finally {
+      setResetPendingLoading(false);
+    }
+  };
+
   const handleGoToReKyc = async () => {
     const confirmResult = confirm(
       `ต้องการ Re-KYC สำหรับ ${Fullname} หรือไม่?`
@@ -1150,17 +1195,22 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       };
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
-
-      const allApproved = documents.every(
+     
+      const kycDocuments = documents.filter(
+        (doc) => doc.document_category !== "EDD"
+      );
+      const allApproved = kycDocuments.every(
         (doc) => doc.status === "approved" || doc.status === "reject"
       );
+
+      console.log("allApproved : ", allApproved);
       if (!allApproved) {
         //setError("เอกสารยังอนุมัติไม่เรียบร้อย");
         alert("เอกสารยังอนุมัติไม่เรียบร้อย");
         setLoading(false);
         return;
       }
-      const approvedCount = documents.filter(
+      const approvedCount = kycDocuments.filter(
         (doc) => doc.status != "approved" && doc.status != "reject"
       ).length;
       if (approvedCount > 0) {
@@ -1346,6 +1396,8 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       setIsFormDisabled(false);
     }
   }, [customerInfo]);
+
+  const isKycPending = kyc?.kyc_status === "Pending";
 
   return (
     <>
@@ -1988,6 +2040,18 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
           <p className="text-error text-center text-[16px]">{error}</p>
         ) : null}
         <div className="flex gap-4 items-center justify-end">
+          <ButtonFill
+            className="btn btn-error btn-sm p-3 min-h-[38px]"
+            type="button"
+            onClick={handleResetPending}
+            disabled={isKycPending || resetPendingLoading}
+            title={isKycPending ? "Status is already Pending" : undefined}
+          >
+            Reset to Pending
+            {resetPendingLoading && (
+              <span className="ml-1 loading loading-spinner loading-xs" />
+            )}
+          </ButtonFill>
           <ButtonFill
             className="btn btn-warning btn-sm p-3 min-h-[38px]"
             type="button"

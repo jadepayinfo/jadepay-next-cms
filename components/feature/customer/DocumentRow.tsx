@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import InputCustom from "@/components/input/input";
+import { IconCalendar } from "@/components/icon";
 import { getDateTimeNow, unixToDateString } from "@/lib/time";
 import {
   FileText,
@@ -75,6 +76,163 @@ const getCountryCode = (country: string): string => {
   }
 };
 
+const normalizeDocRole = (documentInfo: string, country: string): string => {
+  const normalized = (documentInfo || "").toLowerCase().trim();
+  if (!normalized) return "";
+  if (normalized === "selfie") return "selfie";
+
+  const withUnderscores = normalized.replace(/ /g, "_");
+  if (withUnderscores.includes("_document_")) {
+    return withUnderscores;
+  }
+
+  const countrySuffix = `_${getCountryCode(country)}`;
+  if (withUnderscores.endsWith(countrySuffix)) {
+    return withUnderscores;
+  }
+
+  return `${withUnderscores}${countrySuffix}`;
+};
+
+const syncDateState = (
+  dateString: string | null | undefined,
+  setDate: (value: { startDate: Date | null; endDate: Date | null }) => void,
+  setInput: (value: string) => void
+) => {
+  const hasValue = dateString && !isNaN(new Date(dateString).getTime());
+  if (!hasValue) {
+    setDate({ startDate: null, endDate: null });
+    setInput("");
+    return;
+  }
+
+  const parsed = new Date(dateString!);
+  setDate(initStartDate(parsed.getTime() / 1000));
+  setInput(formatDateDisplay(parsed));
+};
+
+const formatDateDisplay = (date: Date | null | undefined): string => {
+  if (!date || isNaN(date.getTime())) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear());
+  return `${day}/${month}/${year}`;
+};
+
+const formatMaskedDateInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+
+const parseMaskedDateInput = (text: string): Date | null => {
+  const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (year < 1900 || year > 2100) return null;
+
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const toNativeDateValue = (date: Date | null | undefined): string => {
+  if (!date || isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+interface DateFieldWithPickerProps {
+  textValue: string;
+  selectedDate: Date | null;
+  onTextChange: (raw: string) => void;
+  onCalendarSelect: (date: Date | null) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+const DateFieldWithPicker: React.FC<DateFieldWithPickerProps> = ({
+  textValue,
+  selectedDate,
+  onTextChange,
+  onCalendarSelect,
+  disabled = false,
+  placeholder = "DD/MM/YYYY",
+}) => {
+  const nativeDateRef = useRef<HTMLInputElement>(null);
+
+  const openCalendar = () => {
+    if (disabled) return;
+    if (typeof nativeDateRef.current?.showPicker === "function") {
+      nativeDateRef.current.showPicker();
+      return;
+    }
+    nativeDateRef.current?.click();
+  };
+
+  return (
+    <div
+      className={`relative w-full border rounded-md force-light-background ${
+        disabled
+          ? "opacity-50 cursor-not-allowed border-gray-200 bg-gray-100"
+          : "border-[--border-color]"
+      }`}
+    >
+      <input
+        type="text"
+        inputMode="numeric"
+        maxLength={10}
+        placeholder={placeholder}
+        className="w-full min-h-[42px] px-3 pr-9 text-sm rounded-md bg-transparent outline-none"
+        value={textValue}
+        onChange={(e) => onTextChange(e.target.value)}
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        className="absolute inset-y-0 right-0 flex items-center px-2 text-base-content/60 hover:text-primary disabled:cursor-not-allowed"
+        onClick={openCalendar}
+        disabled={disabled}
+        aria-label="เลือกวันที่จากปฏิทิน"
+      >
+        <IconCalendar className="text-[18px]" />
+      </button>
+      <input
+        ref={nativeDateRef}
+        type="date"
+        className="sr-only"
+        tabIndex={-1}
+        min="1900-01-01"
+        max="2100-12-31"
+        value={toNativeDateValue(selectedDate)}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (!value) {
+            onCalendarSelect(null);
+            return;
+          }
+          const [year, month, day] = value.split("-").map(Number);
+          onCalendarSelect(new Date(year, month - 1, day));
+        }}
+        disabled={disabled}
+      />
+    </div>
+  );
+};
+
 const DocumentRow: React.FC<DocumentRowProps> = ({
   doc,
   index,
@@ -98,8 +256,6 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
 }) => {
   // Refs
   const idInputRef = useRef<HTMLInputElement>(null);
-  const issueDateRef = useRef<HTMLInputElement>(null);
-  const expireDateRef = useRef<HTMLInputElement>(null);
 
   // Modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -107,15 +263,9 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
   const [rejectReason, setRejectReason] = useState("");
   const [requiredReason, setRequiredReason] = useState("");
   // Document states
-  const [docRole, setDocRole] = useState(() => {
-    const initial = doc.document_info || "";
-    const normalized = initial.toLowerCase();
-    
-    if (normalized === "selfie") {
-      return normalized;
-    }
-    return normalized.replace(/ /g, "_") + "_" + getCountryCode(country);
-  });
+  const [docRole, setDocRole] = useState(() =>
+    normalizeDocRole(doc.document_info || "", country)
+  );
   const [docType, setDocType] = useState(doc.doctype_id);
   const [docIdNo, setDocIdNo] = useState(doc.document_no ?? "");
   const [ictId, setICTID] = useState(doc.ict_mapping_id ?? 0);
@@ -146,6 +296,17 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     hasValidExpiredDate
       ? initStartDate(dateExpired.getTime() / 1000)
       : { startDate: null, endDate: null }
+  );
+
+  const [issuedDateInput, setIssuedDateInput] = useState(() =>
+    formatDateDisplay(
+      hasValidIssuedDate ? dateIssued : null
+    )
+  );
+  const [expiredDateInput, setExpiredDateInput] = useState(() =>
+    formatDateDisplay(
+      hasValidExpiredDate ? dateExpired : null
+    )
   );
 
   const mappedCountry = getCountryCode(country);
@@ -181,38 +342,57 @@ const DocumentRow: React.FC<DocumentRowProps> = ({
     setDocRole(e.target.value);
   };
 
-  const handleDateChange = (value: string, isIssued: boolean) => {
-    if (!value) {
-      // Handle empty input
-      const emptyDateState = { startDate: null, endDate: null };
+  const applyDateValue = (date: Date | null, isIssued: boolean) => {
+    const display = formatDateDisplay(date);
+    const emptyDateState = { startDate: null, endDate: null };
+
+    if (isIssued) {
+      setIssuedDateInput(display);
+    } else {
+      setExpiredDateInput(display);
+    }
+
+    if (!date) {
       if (isIssued) {
-        setIssuedDate(emptyDateState as any);
+        setIssuedDate(emptyDateState);
       } else {
-        setExpiredDate(emptyDateState as any);
+        setExpiredDate(emptyDateState);
       }
       return;
     }
 
-    //const selectedDate = new Date(value);
-    const [year, month, day] = value.split('-').map(Number);
-    const selectedDate = new Date(year, month - 1, day);
-
-    // Check if valid date
-    if (isNaN(selectedDate.getTime())) {
-      return;
-    }
-
     const currentDateState = isIssued ? issuedDate : expiredDate;
-    const currentDate = currentDateState.startDate ? new Date(currentDateState.startDate) : new Date();
+    const currentDate = currentDateState.startDate
+      ? new Date(currentDateState.startDate)
+      : new Date();
 
-    selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
-    const newDateState = { startDate: selectedDate, endDate: selectedDate };
+    date.setHours(currentDate.getHours(), currentDate.getMinutes());
+    const newDateState = { startDate: date, endDate: date };
 
     if (isIssued) {
       setIssuedDate(newDateState);
     } else {
       setExpiredDate(newDateState);
     }
+  };
+
+  const handleMaskedDateChange = (raw: string, isIssued: boolean) => {
+    const formatted = formatMaskedDateInput(raw);
+    if (isIssued) {
+      setIssuedDateInput(formatted);
+    } else {
+      setExpiredDateInput(formatted);
+    }
+
+    if (!formatted) {
+      applyDateValue(null, isIssued);
+      return;
+    }
+
+    const parsed = parseMaskedDateInput(formatted);
+    if (!parsed) return;
+
+    applyDateValue(parsed, isIssued);
   };
  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 const [justSaved, setJustSaved] = useState(false);
@@ -430,10 +610,7 @@ const [justSaved, setJustSaved] = useState(false);
 
     const originalDocInfo = (doc.document_info || "").toLowerCase();
     const originalData = {
-      docRole:
-        originalDocInfo === "selfie"
-          ? "selfie"
-          : originalDocInfo.replace(/ /g, "_") + "_" + getCountryCode(country),
+      docRole: normalizeDocRole(originalDocInfo, country),
       docType: doc.doctype_id,
       position: doc.position || "",
       docIdNo: doc.document_no ?? "",
@@ -456,6 +633,36 @@ const [justSaved, setJustSaved] = useState(false);
     setIssuedDate(initStartDate(undefined));
     setExpiredDate(initStartDate(undefined));
   };
+
+  const docSyncKey = [
+    doc.kyc_doc_id,
+    doc.doctype_id,
+    doc.document_no,
+    doc.position,
+    doc.issued_date,
+    doc.expired_date,
+    doc.ict_mapping_id,
+    doc.issue_country,
+    doc.document_info,
+  ].join("|");
+
+  const lastSyncedDocKey = useRef(docSyncKey);
+
+  useEffect(() => {
+    if (hasUnsavedChanges || justSaved) return;
+    if (lastSyncedDocKey.current === docSyncKey) return;
+
+    lastSyncedDocKey.current = docSyncKey;
+    const nextRole = normalizeDocRole(doc.document_info || "", country);
+    if (nextRole !== docRole) setDocRole(nextRole);
+    if (doc.doctype_id !== docType) setDocType(doc.doctype_id);
+    setDocIdNo(doc.document_no ?? "");
+    setICTID(doc.ict_mapping_id ?? 0);
+    setPosition(doc.position || "");
+    setIssueCountry(doc.issue_country || "");
+    syncDateState(doc.issued_date, setIssuedDate, setIssuedDateInput);
+    syncDateState(doc.expired_date, setExpiredDate, setExpiredDateInput);
+  }, [docSyncKey, hasUnsavedChanges, justSaved, country, doc]);
 
   useEffect(() => {
     if (justSaved) {
@@ -703,48 +910,26 @@ const [justSaved, setJustSaved] = useState(false);
 
         {/* Issued Date */}
         <td className="px-3 py-4">
-          <div className="relative">
-            <input
-              ref={issueDateRef}
-              type="date"
-              className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                isSelfie ||  isApproved || isRejected
-                  ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
-                  : "border-[--border-color]"
-              }`}
-              style={
-                isSelfie ||  isApproved || isRejected
-                  ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
-                  : { border: "1px solid #d1d5db" }
-              }
-              value={formatDate(issuedDate.startDate) || ""}
-              onChange={(e) => handleDateChange(e.target.value, true)}
-              disabled={isSelfie ||  isApproved || isRejected}
-            />
-          </div>
+          <DateFieldWithPicker
+            textValue={issuedDateInput}
+            selectedDate={issuedDate.startDate}
+            onTextChange={(raw) => handleMaskedDateChange(raw, true)}
+            onCalendarSelect={(date) => applyDateValue(date, true)}
+            disabled={isSelfie || isApproved || isRejected}
+            placeholder="DD/MM/YYYY"
+          />
         </td>
 
         {/* Expired Date */}
         <td className="px-3 py-4">
-          <div className="relative">
-            <input
-              ref={expireDateRef}
-              type="date"
-              className={`relative w-full flex items-center border py force-light-background rounded-md ${
-                isSelfie ||  isApproved || isRejected
-                  ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
-                  : "border-[--border-color]"
-              }`}
-              style={
-                isSelfie ||  isApproved || isRejected
-                  ? { border: "1px solid #e5e7eb", backgroundColor: "#f3f4f6" }
-                  : { border: "1px solid #d1d5db" }
-              }
-              value={formatDate(expiredDate.startDate) || ""}
-              onChange={(e) => handleDateChange(e.target.value, false)}
-              disabled={isSelfie ||  isApproved || isRejected}
-            />
-          </div>
+          <DateFieldWithPicker
+            textValue={expiredDateInput}
+            selectedDate={expiredDate.startDate}
+            onTextChange={(raw) => handleMaskedDateChange(raw, false)}
+            onCalendarSelect={(date) => applyDateValue(date, false)}
+            disabled={isSelfie || isApproved || isRejected}
+            placeholder="DD/MM/YYYY"
+          />
         </td>
 
         {/* Issue Country */}

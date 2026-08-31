@@ -443,21 +443,31 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       });
 
       const newKycDocId = response.data.Body.data.kyc_doc_id;
-      // กำหนด final kyc_doc_id ที่จะใช้ (ใช้ค่าใหม่ถ้ามี ไม่เช่นนั้นใช้ค่าเดิม)
       const finalKycDocId = newKycDocId || doc.kyc_doc_id;
 
-      // อัปเดต kyc_doc_id ใน documents state (รองรับทั้ง 0 และ temporary ID ที่เป็น negative)
-      if (originalKycDocId <= 0 && newKycDocId && docIndex !== -1) {
-        setDocuments((prev) => {
-          const updated = [...prev];
-          // อัปเดตด้วย index โดยตรง
-          updated[docIndex] = { ...updated[docIndex], kyc_doc_id: newKycDocId };
-          return updated;
-        });
+      setDocuments((prev) =>
+        prev.map((d, i) => {
+          const isMatch =
+            docIndex !== -1
+              ? i === docIndex
+              : d.kyc_doc_id === originalKycDocId;
+          if (!isMatch) return d;
 
-        // อัปเดต doc object ให้มีค่า kyc_doc_id ใหม่
-        doc.kyc_doc_id = newKycDocId;
-      }
+          return {
+            ...d,
+            kyc_doc_id: finalKycDocId,
+            doctype_id: doc.doctype_id,
+            document_info: doc.document_info,
+            position: doc.position,
+            document_no: doc.document_no,
+            issued_date: doc.issued_date,
+            expired_date: doc.expired_date,
+            ict_mapping_id: doc.ict_mapping_id,
+            issue_country: doc.issue_country,
+            status: doc.status,
+          };
+        })
+      );
 
       // ล้างค่า preview files โดยใช้ kyc_doc_id เดิมก่อน (ถ้ามีการเปลี่ยน key)
       setPreviewFiles((prev) => {
@@ -732,7 +742,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
   /** ส่งข้อมูล EDD ไป 3rd party API (payload ตาม SendEDDDocumentRequest: user_ids []int) */
   const handleEddSend = async () => {
     try {
-      alert("handleEddSend");
+      //alert("handleEddSend");
       const userId = customerInfo?.customer_data?.customer?.user_id;
       if (!userId || userId < 1) {
         alert("ไม่พบ user_id ของลูกค้า");
@@ -1146,7 +1156,11 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
       customer_address.push(contactAddressData);
       customer_address.push(workAddressData);
 
-      const allApproved = documents.every(
+      const kycDocuments = documents.filter(
+        (doc) => doc.document_category !== "EDD"
+      );
+
+      const allApproved = kycDocuments.every(
         (doc) => doc.status === "approved" || doc.status === "reject"
       );
       if (!allApproved) {
@@ -1155,7 +1169,7 @@ const eddDocumentsRef = useRef<EddDocument[]>([]);
         setLoading(false);
         return;
       }
-      const approvedCount = documents.filter(
+      const approvedCount = kycDocuments.filter(
         (doc) => doc.status != "approved" && doc.status != "reject"
       ).length;
       if (approvedCount > 0) {
